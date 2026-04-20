@@ -18,8 +18,12 @@
 - Python 3.x with `openpyxl` (for geospatial module report generation)
 
 ## Required OS
-- *Linux*: mandatory for full processing, including StaMPS, enabling end-to-end execution.
-- *Windows*: guaranteed support for preprocessing and geospatial analysis modules.
+- *Linux*: supported end-to-end, including StaMPS, for the complete PSI pipeline.
+- *Windows*: supported end-to-end for the SNAP-based workflow (preprocessing,
+  StaMPS, and geospatial analysis) via the Windows-native StaMPS fork
+  [`pyccino/StaMPS`](https://github.com/pyccino/StaMPS). PHASE auto-discovers
+  the StaMPS Windows install through `StaMPS_CONFIG.ps1` and shares the Python
+  interpreter with StaMPS via `%APPDATA%\PHASE\python.txt`.
 - *macOS*: supports preprocessing and geospatial analysis modules.
 
 ## Installation and Setup
