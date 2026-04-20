@@ -4,6 +4,7 @@ from pathlib import Path
 
 GEOSPLINTER_FILES = [
     "STmodel_DET1D.m",
+    "STmodel_DET2D.m",
     "STmodel_STC1D.m",
     "STmodel_STC2D.m",
     "ModellingInTime.m",
