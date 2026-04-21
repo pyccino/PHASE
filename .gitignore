@@ -6,3 +6,9 @@
 
 # MATLAB specific
 *.asv
+
+# Python bytecode caches
+__pycache__/
+
+# PHASE_model generated state (per-user, not shared)
+input_model.mat
