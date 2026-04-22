@@ -1723,7 +1723,15 @@ disp('======== Step 7 ========');
 disp('Plots creation started...');
 
 % 7.1) GIF with basemap
+% R2026a-compat: getframe on invisible figure hangs, skip GIF on R2026a+
+try
+    gif_ok = isMATLABReleaseOlderThan('R2026a');  % getframe on invisible figure works
+catch
+    gif_ok = true;  % older MATLAB (pre-R2020b) lacks the check - assume OK
+end
+if gif_ok
 figure('Visible', 'off', 'Position', [100, 100, 1200, 600]);
+geoaxes;
 v_min = min(round(prctile(final_signal_out(:), 5), 0), -5);
 v_max = max(round(prctile(final_signal_out(:), 95), 0), 5);
 h = waitbar(0, 'Plotting epochs...');
@@ -1756,6 +1764,10 @@ for t = 1:length(t_full)
     clf;
 end
 close(h); close;
+else
+    disp('GIF creation skipped (R2026a+: getframe on invisible figure hangs)');
+end % end if gif_ok
+
 
 
 % 7.2) Heatmap
