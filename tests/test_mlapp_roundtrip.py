@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,7 @@ def test_matlab_can_open_repacked_mlapp(phase_root: Path, tmp_path: Path):
     shutil.copy(src, dst)
     # Trivial edit: identity transform (re-pack without content change)
     subprocess.check_call([
-        "python3", str(phase_root / "tools/mlapp_roundtrip.py"),
+        sys.executable, str(phase_root / "tools/mlapp_roundtrip.py"),
         str(dst), r"(?s).*", r"\g<0>"  # match-everything, replace with same
     ])
     # Ask MATLAB to load the file
