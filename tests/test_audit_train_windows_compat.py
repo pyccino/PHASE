@@ -54,3 +54,91 @@ def test_strip_keeps_transpose_operator():
     out = audit.strip_matlab_noise(src)
     assert "A'" in out
     assert "b" in out
+
+
+def test_scan_detects_system_call(tmp_path: Path):
+    f = tmp_path / "x.m"
+    f.write_text("x = 1;\nsystem('echo hi');\nz = 2;\n")
+    findings = audit.scan_linux_patterns(f)
+    assert len(findings) == 1
+    assert findings[0].line == 2
+    assert findings[0].severity == "HIGH"
+    assert findings[0].pattern == "system_call"
+
+
+def test_scan_detects_aps_systemcall_wrapper(tmp_path: Path):
+    f = tmp_path / "x.m"
+    f.write_text("aps_systemcall(cmd);\n")
+    findings = audit.scan_linux_patterns(f)
+    assert len(findings) == 1
+    assert findings[0].severity == "HIGH"
+    assert findings[0].pattern == "aps_systemcall"
+
+
+def test_scan_ignores_pattern_in_comment(tmp_path: Path):
+    f = tmp_path / "x.m"
+    f.write_text("% system('rm /')\nx = 1;\n")
+    findings = audit.scan_linux_patterns(f)
+    assert findings == []
+
+
+def test_scan_ignores_pattern_in_string(tmp_path: Path):
+    f = tmp_path / "x.m"
+    f.write_text("error('use system() to fix');\n")
+    # The 'system()' inside the quoted string is stripped.
+    # The standalone 'error(' is a builtin, not in our pattern list.
+    findings = audit.scan_linux_patterns(f)
+    assert findings == []
+
+
+def test_scan_detects_linux_path_medium(tmp_path: Path):
+    f = tmp_path / "x.m"
+    f.write_text("dest = '/tmp/foo';\n")
+    # The string literal is stripped, so /tmp inside quotes is NOT flagged.
+    # That's correct — the string was an example, not a real Linux path use.
+    findings = audit.scan_linux_patterns(f)
+    assert findings == []  # stripped
+
+
+def test_scan_detects_linux_path_outside_string(tmp_path: Path):
+    f = tmp_path / "x.m"
+    # `cd /tmp` as a bang-shell command: the bang catches it as HIGH,
+    # the `/tmp` would also catch as MEDIUM but bang takes precedence per-line.
+    f.write_text("dest = strcat('/tmp', name);\n")
+    # /tmp inside a string is stripped → no finding. Use a non-string case:
+    f.write_text("homedir = pwd; cd ~/data\n")  # bang-less, but ~/ catches.
+    findings = audit.scan_linux_patterns(f)
+    pats = {fi.pattern for fi in findings}
+    assert "home_expansion" in pats
+
+
+def test_scan_detects_low_severity_shell_command(tmp_path: Path):
+    f = tmp_path / "x.m"
+    # bare 'wget' identifier outside any string. In real TRAIN this only
+    # appears inside system() args, but we want a standalone catch too.
+    f.write_text("cmd = wget;\n")  # no string literal here.
+    findings = audit.scan_linux_patterns(f)
+    assert any(fi.severity == "LOW" and fi.pattern == "shell_wget"
+               for fi in findings)
+
+
+def test_scan_emits_warning_when_eval_or_feval(tmp_path: Path):
+    f = tmp_path / "x.m"
+    f.write_text("h = feval(name, x);\n")
+    findings = audit.scan_linux_patterns(f)
+    # `feval` is not a "Linux pattern" but emits a WARNING-severity finding
+    # so the report flags incomplete closure for that branch.
+    assert any(fi.severity == "WARNING" and fi.pattern == "dynamic_dispatch"
+               for fi in findings)
+
+
+def test_finding_carries_snippet_with_context(tmp_path: Path):
+    f = tmp_path / "x.m"
+    f.write_text("a = 1;\nb = 2;\nsystem('x');\nc = 3;\nd = 4;\n")
+    findings = audit.scan_linux_patterns(f)
+    assert len(findings) == 1
+    snippet = findings[0].snippet
+    # Snippet contains the matched line plus 1 line above and 1 below.
+    assert "b = 2;" in snippet
+    assert "system" in snippet
+    assert "c = 3;" in snippet

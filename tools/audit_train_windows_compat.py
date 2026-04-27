@@ -65,3 +65,85 @@ def strip_matlab_noise(src: str) -> str:
             transpose_prev = False
         i += 1
     return "".join(out)
+
+
+import re
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class Finding:
+    file: Path
+    line: int
+    pattern: str
+    severity: str  # HIGH | MEDIUM | LOW | WARNING
+    snippet: str   # matched line + 1 line of context above and below
+
+
+# (pattern_name, severity, compiled_regex)
+_PATTERNS: list[tuple[str, str, re.Pattern[str]]] = [
+    # HIGH — direct shell escapes
+    ("system_call",       "HIGH",   re.compile(r"\bsystem\s*\(")),
+    ("unix_call",         "HIGH",   re.compile(r"\bunix\s*\(")),
+    ("popen_call",        "HIGH",   re.compile(r"\bpopen\s*\(")),
+    ("aps_systemcall",    "HIGH",   re.compile(r"\baps_systemcall\s*\(")),
+    ("bang_shell",        "HIGH",   re.compile(r"(?:^|\s)!\w")),
+    # MEDIUM — Linux-specific assumptions
+    ("getenv_home",       "MEDIUM", re.compile(r"\bgetenv\s*\(\s*['\"]HOME['\"]")),
+    ("linux_path_tmp",    "MEDIUM", re.compile(r"/tmp/")),
+    ("linux_path_var",    "MEDIUM", re.compile(r"/var/")),
+    ("linux_path_home",   "MEDIUM", re.compile(r"/home/")),
+    ("linux_path_usr",    "MEDIUM", re.compile(r"/usr/")),
+    ("home_expansion",    "MEDIUM", re.compile(r"~/")),
+    ("shell_script_ref",  "MEDIUM", re.compile(r"\.sh\b")),
+    # LOW — shell command identifiers
+    ("shell_wget",        "LOW",    re.compile(r"\bwget\b")),
+    ("shell_curl",        "LOW",    re.compile(r"\bcurl\b")),
+    ("shell_tar",         "LOW",    re.compile(r"\btar\b")),
+    ("shell_gunzip",      "LOW",    re.compile(r"\bgunzip\b")),
+    ("shell_rm_flag",     "LOW",    re.compile(r"\brm\s+-")),
+    ("shell_cp_flag",     "LOW",    re.compile(r"\bcp\s+-")),
+    ("shell_mv",          "LOW",    re.compile(r"\bmv\s+")),
+    ("shell_sed",         "LOW",    re.compile(r"\bsed\b")),
+    ("shell_awk",         "LOW",    re.compile(r"\bawk\b")),
+    ("shell_ncdump",      "LOW",    re.compile(r"\bncdump\b")),
+    ("shell_grib",        "LOW",    re.compile(r"\bgrib_")),
+    # WARNING — closure incompleteness signals
+    ("dynamic_dispatch",  "WARNING", re.compile(r"\b(?:feval|eval)\s*\(")),
+]
+
+
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        print(f"WARN: {path} not decodable as UTF-8, falling back to "
+              f"latin-1", file=sys.stderr)
+        return path.read_text(encoding="latin-1")
+
+
+def _snippet(lines: list[str], lineno: int) -> str:
+    """1-indexed line + 1 above + 1 below, joined with newlines."""
+    start = max(0, lineno - 2)
+    end = min(len(lines), lineno + 1)
+    return "\n".join(lines[start:end])
+
+
+def scan_linux_patterns(file_path: Path) -> list[Finding]:
+    raw = _read_text(file_path)
+    stripped = strip_matlab_noise(raw)
+    raw_lines = raw.splitlines()
+    stripped_lines = stripped.splitlines()
+    findings: list[Finding] = []
+    for lineno, line in enumerate(stripped_lines, start=1):
+        for name, sev, rx in _PATTERNS:
+            if rx.search(line):
+                findings.append(Finding(
+                    file=file_path,
+                    line=lineno,
+                    pattern=name,
+                    severity=sev,
+                    snippet=_snippet(raw_lines, lineno),
+                ))
+    return findings
