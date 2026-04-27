@@ -370,3 +370,83 @@ def render_report(
                 body.append("  ```")
                 body.append("")
     return "\n".join(head + body) + "\n"
+
+
+import argparse
+
+
+ENTRY_POINTS = ["aps_linear", "aps_weather_model", "setparm_aps"]
+DEFAULT_TRAIN_PATH = Path("F:/phase/TRAIN")
+DEFAULT_COMMIT = "6c93feb"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Audit TRAIN's Windows compatibility, scoped to the "
+                    "transitive closure of the TRAIN functions invoked by PHASE."
+    )
+    parser.add_argument(
+        "--train-path", type=Path, default=DEFAULT_TRAIN_PATH,
+        help="Path to TRAIN clone (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--commit", default=DEFAULT_COMMIT,
+        help="TRAIN commit to audit (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--output", type=Path, default=None,
+        help="Output markdown path. Default: reports/train_audit_<sha>_<date>.md",
+    )
+    args = parser.parse_args(argv)
+
+    # Ensure TRAIN is present at the expected commit. Does not clone if dest
+    # exists; user must remove it explicitly to re-clone.
+    clone_train(args.train_path, args.commit)
+
+    graph = build_call_graph(args.train_path, ENTRY_POINTS)
+    findings: list[Finding] = []
+    for file_path in graph:
+        findings.extend(scan_linux_patterns(file_path))
+
+    md = render_report(
+        findings,
+        train_commit=args.commit,
+        files_scanned=len(graph),
+        train_root=args.train_path,
+    )
+
+    if args.output is None:
+        reports_dir = Path.cwd() / "reports"
+        reports_dir.mkdir(exist_ok=True)
+        sha7 = args.commit[:7]
+        out = reports_dir / f"train_audit_{sha7}_{date.today().isoformat()}.md"
+    else:
+        out = args.output
+        out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(md, encoding="utf-8")
+
+    # Console summary.
+    counts = {s: sum(1 for f in findings if f.severity == s)
+              for s in _SEVERITY_ORDER}
+    print(f"Audit complete. Files scanned: {len(graph)}. "
+          f"Findings: " + ", ".join(f"{s}={counts[s]}" for s in _SEVERITY_ORDER))
+    # Per-file top offenders (spec: console summary includes per-file counts).
+    if findings:
+        per_file: dict[Path, int] = {}
+        for f in findings:
+            per_file[f.file] = per_file.get(f.file, 0) + 1
+        top = sorted(per_file.items(), key=lambda kv: -kv[1])[:5]
+        print("Top files by finding count:")
+        for path, cnt in top:
+            try:
+                rel = path.relative_to(args.train_path).as_posix()
+            except ValueError:
+                rel = str(path)
+            print(f"  {cnt:>3}  {rel}")
+    print(f"Report: {out}")
+
+    return 1 if counts["HIGH"] > 0 else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

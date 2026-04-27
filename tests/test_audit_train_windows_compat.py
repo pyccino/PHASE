@@ -387,3 +387,64 @@ def test_render_report_includes_limits_section(tmp_path: Path):
     )
     assert "Limits of this analysis" in md
     assert "feval" in md.lower() or "dynamic dispatch" in md.lower()
+
+
+def test_main_writes_report_and_returns_zero_on_clean_train(
+    tmp_path: Path, monkeypatch,
+):
+    # Build a fake TRAIN with one clean entry-point.
+    sha = "abcd1234"
+    matlab = tmp_path / "matlab"
+    matlab.mkdir()
+    (matlab / "aps_linear.m").write_text("function aps_linear(); end\n")
+    (matlab / "aps_weather_model.m").write_text("function aps_weather_model(); end\n")
+    (matlab / "setparm_aps.m").write_text("function setparm_aps(); end\n")
+    # Monkeypatch verify to bypass git checks for the fake repo.
+    monkeypatch.setattr(audit, "verify_train_clone", lambda _d, _c: None)
+    out = tmp_path / "report.md"
+    rc = audit.main([
+        "--train-path", str(tmp_path),
+        "--commit", sha,
+        "--output", str(out),
+    ])
+    assert rc == 0
+    assert out.exists()
+    text = out.read_text()
+    assert "0 findings" in text or "no findings" in text.lower()
+
+
+def test_main_returns_one_on_high_finding(tmp_path: Path, monkeypatch):
+    matlab = tmp_path / "matlab"
+    matlab.mkdir()
+    (matlab / "aps_linear.m").write_text("function aps_linear()\nsystem('x');\nend\n")
+    (matlab / "aps_weather_model.m").write_text("function aps_weather_model(); end\n")
+    (matlab / "setparm_aps.m").write_text("function setparm_aps(); end\n")
+    monkeypatch.setattr(audit, "verify_train_clone", lambda _d, _c: None)
+    out = tmp_path / "report.md"
+    rc = audit.main([
+        "--train-path", str(tmp_path),
+        "--commit", "abc",
+        "--output", str(out),
+    ])
+    assert rc == 1
+    text = out.read_text()
+    assert "HIGH (1)" in text
+    assert "system_call" in text
+
+
+def test_main_default_output_path(tmp_path: Path, monkeypatch):
+    # When --output is omitted, file is written under <phase_root>/reports/.
+    matlab = tmp_path / "matlab"
+    matlab.mkdir()
+    for n in ("aps_linear", "aps_weather_model", "setparm_aps"):
+        (matlab / f"{n}.m").write_text(f"function {n}(); end\n")
+    monkeypatch.setattr(audit, "verify_train_clone", lambda _d, _c: None)
+    monkeypatch.chdir(tmp_path)  # so reports/ is created under tmp_path.
+    rc = audit.main([
+        "--train-path", str(tmp_path),
+        "--commit", "deadbeef",
+    ])
+    assert rc == 0
+    reports = list((tmp_path / "reports").glob("train_audit_*.md"))
+    assert len(reports) == 1
+    assert "deadbeef"[:7] in reports[0].name
