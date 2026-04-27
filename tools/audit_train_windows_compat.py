@@ -81,23 +81,34 @@ class Finding:
     snippet: str   # matched line + 1 line of context above and below
 
 
-# (pattern_name, severity, compiled_regex)
-_PATTERNS: list[tuple[str, str, re.Pattern[str]]] = [
+# Patterns scanned on the STRIPPED source: shell escapes / MATLAB-builtins
+# whose detection would be confused by occurrences inside string literals
+# (e.g. error('use system() to fix') must NOT flag system_call).
+_PATTERNS_STRIPPED: list[tuple[str, str, re.Pattern[str]]] = [
     # HIGH — direct shell escapes
     ("system_call",       "HIGH",   re.compile(r"\bsystem\s*\(")),
     ("unix_call",         "HIGH",   re.compile(r"\bunix\s*\(")),
     ("popen_call",        "HIGH",   re.compile(r"\bpopen\s*\(")),
     ("aps_systemcall",    "HIGH",   re.compile(r"\baps_systemcall\s*\(")),
     ("bang_shell",        "HIGH",   re.compile(r"(?:^|\s)!\w")),
-    # MEDIUM — Linux-specific assumptions
     ("getenv_home",       "MEDIUM", re.compile(r"\bgetenv\s*\(\s*['\"]HOME['\"]")),
+    # WARNING — closure incompleteness signals
+    ("dynamic_dispatch",  "WARNING", re.compile(r"\b(?:feval|eval)\s*\(")),
+]
+
+# Patterns scanned on the RAW source: Linux paths and shell-command tokens
+# that, in MATLAB, ALWAYS live inside string literals (paths passed to
+# fopen/system/etc.). Stripping strings would silently hide them — see
+# `aps_merra_files.m` `fopen('~/.merrapass')` as a canonical example.
+_PATTERNS_RAW: list[tuple[str, str, re.Pattern[str]]] = [
+    # MEDIUM — Linux-specific assumptions (path strings passed to MATLAB IO)
     ("linux_path_tmp",    "MEDIUM", re.compile(r"/tmp/")),
     ("linux_path_var",    "MEDIUM", re.compile(r"/var/")),
     ("linux_path_home",   "MEDIUM", re.compile(r"/home/")),
     ("linux_path_usr",    "MEDIUM", re.compile(r"/usr/")),
     ("home_expansion",    "MEDIUM", re.compile(r"~/")),
     ("shell_script_ref",  "MEDIUM", re.compile(r"\.sh\b")),
-    # LOW — shell command identifiers
+    # LOW — shell command identifiers (typically inside system(' ... ') args)
     ("shell_wget",        "LOW",    re.compile(r"\bwget\b")),
     ("shell_curl",        "LOW",    re.compile(r"\bcurl\b")),
     ("shell_tar",         "LOW",    re.compile(r"\btar\b")),
@@ -109,8 +120,6 @@ _PATTERNS: list[tuple[str, str, re.Pattern[str]]] = [
     ("shell_awk",         "LOW",    re.compile(r"\bawk\b")),
     ("shell_ncdump",      "LOW",    re.compile(r"\bncdump\b")),
     ("shell_grib",        "LOW",    re.compile(r"\bgrib_")),
-    # WARNING — closure incompleteness signals
-    ("dynamic_dispatch",  "WARNING", re.compile(r"\b(?:feval|eval)\s*\(")),
 ]
 
 
@@ -136,8 +145,20 @@ def scan_linux_patterns(file_path: Path) -> list[Finding]:
     raw_lines = raw.splitlines()
     stripped_lines = stripped.splitlines()
     findings: list[Finding] = []
+    # Stripped pass: shell escapes (false-positive-prone inside strings).
     for lineno, line in enumerate(stripped_lines, start=1):
-        for name, sev, rx in _PATTERNS:
+        for name, sev, rx in _PATTERNS_STRIPPED:
+            if rx.search(line):
+                findings.append(Finding(
+                    file=file_path,
+                    line=lineno,
+                    pattern=name,
+                    severity=sev,
+                    snippet=_snippet(raw_lines, lineno),
+                ))
+    # Raw pass: Linux paths and shell tokens (live inside string literals).
+    for lineno, line in enumerate(raw_lines, start=1):
+        for name, sev, rx in _PATTERNS_RAW:
             if rx.search(line):
                 findings.append(Finding(
                     file=file_path,

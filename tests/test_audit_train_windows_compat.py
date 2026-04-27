@@ -91,25 +91,35 @@ def test_scan_ignores_pattern_in_string(tmp_path: Path):
     assert findings == []
 
 
-def test_scan_detects_linux_path_medium(tmp_path: Path):
+def test_scan_detects_linux_path_inside_string(tmp_path: Path):
     f = tmp_path / "x.m"
     f.write_text("dest = '/tmp/foo';\n")
-    # The string literal is stripped, so /tmp inside quotes is NOT flagged.
-    # That's correct — the string was an example, not a real Linux path use.
+    # MATLAB paths ALWAYS live inside string literals — the audit must
+    # flag them on the raw source, not the stripped one.
     findings = audit.scan_linux_patterns(f)
-    assert findings == []  # stripped
+    pats = {fi.pattern for fi in findings}
+    assert "linux_path_tmp" in pats
+    assert all(fi.severity == "MEDIUM" for fi in findings
+               if fi.pattern == "linux_path_tmp")
 
 
-def test_scan_detects_linux_path_outside_string(tmp_path: Path):
+def test_scan_detects_home_expansion_in_fopen(tmp_path: Path):
+    # Canonical Windows-blocker pattern from real TRAIN: aps_merra_files.m:50
+    # uses `fopen('~/.merrapass','r')`. Must be flagged as MEDIUM.
     f = tmp_path / "x.m"
-    # `cd /tmp` as a bang-shell command: the bang catches it as HIGH,
-    # the `/tmp` would also catch as MEDIUM but bang takes precedence per-line.
-    f.write_text("dest = strcat('/tmp', name);\n")
-    # /tmp inside a string is stripped → no finding. Use a non-string case:
-    f.write_text("homedir = pwd; cd ~/data\n")  # bang-less, but ~/ catches.
+    f.write_text("fid = fopen('~/.merrapass', 'r');\n")
     findings = audit.scan_linux_patterns(f)
     pats = {fi.pattern for fi in findings}
     assert "home_expansion" in pats
+
+
+def test_scan_does_not_flag_system_call_inside_string(tmp_path: Path):
+    # Regression guard: shell escapes (HIGH) are still stripped-only — they
+    # must NOT fire on text that lives inside a string literal.
+    f = tmp_path / "x.m"
+    f.write_text("error('use system() to fix');\n")
+    findings = audit.scan_linux_patterns(f)
+    assert all(fi.pattern != "system_call" for fi in findings)
 
 
 def test_scan_detects_low_severity_shell_command(tmp_path: Path):
