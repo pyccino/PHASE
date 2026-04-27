@@ -268,3 +268,42 @@ def test_call_graph_real_train(phase_root: Path):
     assert "aps_systemcall" in names
     # Sanity: closure is non-trivial but bounded by total .m count (88).
     assert 5 <= len(graph) <= 88
+
+
+def _git_init_with_commit(repo: Path, content: str = "x") -> str:
+    """Init a tiny git repo, commit, return the SHA."""
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True)
+    (repo / "f").write_text(content)
+    subprocess.run(["git", "add", "f"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "x"], cwd=repo, check=True)
+    sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo, check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    return sha
+
+
+def test_verify_clone_passes_when_head_matches(tmp_path: Path):
+    sha = _git_init_with_commit(tmp_path)
+    # No exception on match. Pass the full SHA; the function accepts shorts too.
+    audit.verify_train_clone(tmp_path, sha)
+
+
+def test_verify_clone_passes_with_short_sha(tmp_path: Path):
+    sha = _git_init_with_commit(tmp_path)
+    audit.verify_train_clone(tmp_path, sha[:7])
+
+
+def test_verify_clone_raises_on_mismatch(tmp_path: Path):
+    _git_init_with_commit(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        audit.verify_train_clone(tmp_path, "deadbeef")
+    assert "deadbeef" in str(exc.value)
+
+
+def test_verify_clone_raises_when_not_a_repo(tmp_path: Path):
+    # tmp_path exists but is not a git repo.
+    with pytest.raises(SystemExit):
+        audit.verify_train_clone(tmp_path, "abc123")

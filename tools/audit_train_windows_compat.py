@@ -192,6 +192,7 @@ def extract_calls(src: str) -> set[str]:
     }
 
 
+import subprocess
 from collections import deque
 
 
@@ -235,3 +236,24 @@ def build_call_graph(
             if c not in visited:
                 queue.append(c)
     return graph
+
+
+def verify_train_clone(dest: Path, expected_commit: str) -> None:
+    """Verify that `dest` is a git repo whose HEAD matches `expected_commit`
+    (full or short SHA). Raises SystemExit on mismatch or missing repo."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(dest), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise SystemExit(
+            f"TRAIN path {dest} is not a git repo (or git is not on PATH): {e}"
+        )
+    head = result.stdout.strip()
+    if not head.startswith(expected_commit):
+        raise SystemExit(
+            f"TRAIN HEAD at {dest} is {head[:12]}, expected {expected_commit}. "
+            f"Refusing to overwrite. Either checkout the audited commit or "
+            f"pass --commit <new-sha>."
+        )
