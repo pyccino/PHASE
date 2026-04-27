@@ -1,3 +1,7 @@
+# Nested third-party clones (not part of PHASE source)
+StaMPS/
+TRAIN/
+
 # macOS system files
 .DS_Store
 **/.DS_Store
