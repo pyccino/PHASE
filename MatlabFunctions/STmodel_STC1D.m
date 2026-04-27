@@ -1427,13 +1427,9 @@ disp('======== Step 7 ========');
 disp('Plots creation started...');
 
 % 7.1) GIF with basemap
-% R2026a-compat: getframe on invisible figure hangs, skip GIF on R2026a+
-try
-    gif_ok = isMATLABReleaseOlderThan('R2026a');  % getframe on invisible figure works
-catch
-    gif_ok = true;  % older MATLAB (pre-R2020b) lacks the check - assume OK
-end
-if gif_ok
+% R2026a-compat: getframe on invisible figures hangs in R2026a's display
+% pipeline. Use print('-RGBImage') instead — same RGB output, goes through
+% the print pipeline (no display backing store needed).
 figure('Visible', 'off', 'Position', [100, 100, 1200, 600]);
 geoaxes;
 v_min = min(round(prctile(final_signal_out(:), 5), 0), -5);
@@ -1457,8 +1453,7 @@ for t = 1:length(t_full)
     c = colorbar; c.Label.String = 'LOS Displacement [mm]'; c.Label.FontSize = 15;
     title(sprintf('LOS Displacement on %s (1D)', datestr(dates_full(t))), 'FontSize', 18);
     hold off;
-    frame = getframe(gcf);
-    im = frame2im(frame);
+    im = print(gcf, '-RGBImage');
     [imind, cm] = rgb2ind(im, 256);
     if t == 1
         imwrite(imind, cm, fullfile(figsDir, 'STstc_displ1D.gif'), 'gif', 'Loopcount', inf, 'DelayTime', 0.5);
@@ -1468,9 +1463,6 @@ for t = 1:length(t_full)
     clf;
 end
 close(h); close;
-else
-    disp('GIF creation skipped (R2026a+: getframe on invisible figure hangs)');
-end % end if gif_ok
 
 
 
