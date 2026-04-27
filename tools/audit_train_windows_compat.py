@@ -60,7 +60,7 @@ def strip_matlab_noise(src: str) -> str:
         if ch.isalnum() or ch in ")]}._":
             transpose_prev = True
         elif ch.isspace():
-            pass  # whitespace doesn't change transpose context.
+            transpose_prev = False  # space breaks transpose context: `A '` is not transpose.
         else:
             transpose_prev = False
         i += 1
@@ -190,3 +190,48 @@ def extract_calls(src: str) -> set[str]:
         m.group(1) for m in _CALL_RX.finditer(cleaned)
         if m.group(1) not in _MATLAB_KEYWORDS
     }
+
+
+from collections import deque
+
+
+def build_call_graph(
+    train_root: Path,
+    entry_points: list[str],
+) -> dict[Path, set[str]]:
+    """BFS from entry_points across the TRAIN .m files. Returns the reachable
+    closure as a dict mapping each reached file to the set of resolved callee
+    basenames.
+    """
+    index = index_train_files(train_root)
+    missing = [name for name in entry_points if name not in index]
+    if missing:
+        raise SystemExit(
+            f"Entry-point(s) not found in {train_root}/matlab: {missing}. "
+            f"Index has {len(index)} files. Closest matches: "
+            f"{[n for n in index if any(m[:4] in n for m in missing)][:5]}"
+        )
+
+    graph: dict[Path, set[str]] = {}
+    visited: set[str] = set()
+    queue: deque[str] = deque(entry_points)
+    while queue:
+        name = queue.popleft()
+        if name in visited:
+            continue
+        visited.add(name)
+        path = index[name]
+        src = _read_text(path)
+        callees = extract_calls(src)
+        # Keep only callees that resolve to a TRAIN .m file. Exclude
+        # self-edges: the regex matches the function's own declaration line
+        # `function ... = name(args)`, which would otherwise show up as a
+        # spurious self-call in the recorded graph data. Cycle prevention
+        # is already handled by `visited`, so dropping these here only
+        # cleans the reported edge set without changing closure membership.
+        resolved = {c for c in callees if c in index and index[c] != path}
+        graph[path] = resolved
+        for c in resolved:
+            if c not in visited:
+                queue.append(c)
+    return graph

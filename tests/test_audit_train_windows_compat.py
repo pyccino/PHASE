@@ -189,3 +189,82 @@ def test_extract_calls_strips_strings_and_comments_first():
     assert "foo" not in calls
     assert "baz" not in calls
     assert "bar" in calls
+
+
+@pytest.fixture
+def phase_root() -> Path:
+    return Path("F:/phase")
+
+
+def _make_train(tmp_path: Path, files: dict[str, str]) -> Path:
+    """Helper: create a fake TRAIN tree with given .m contents."""
+    matlab = tmp_path / "matlab"
+    matlab.mkdir()
+    for name, content in files.items():
+        (matlab / f"{name}.m").write_text(content)
+    return tmp_path
+
+
+def test_call_graph_single_entry_no_calls(tmp_path: Path):
+    root = _make_train(tmp_path, {"aps_linear": "function aps_linear()\nend\n"})
+    graph = audit.build_call_graph(root, ["aps_linear"])
+    assert len(graph) == 1
+    assert next(iter(graph.values())) == set()
+
+
+def test_call_graph_follows_callees(tmp_path: Path):
+    root = _make_train(tmp_path, {
+        "aps_linear": "function aps_linear()\n  helper(x);\nend\n",
+        "helper": "function helper(x)\n  inner(x);\nend\n",
+        "inner": "function inner(x)\nend\n",
+        "unreachable": "function unreachable()\nend\n",
+    })
+    graph = audit.build_call_graph(root, ["aps_linear"])
+    names = {p.stem for p in graph}
+    assert names == {"aps_linear", "helper", "inner"}
+    assert "unreachable" not in names
+
+
+def test_call_graph_handles_cycles(tmp_path: Path):
+    root = _make_train(tmp_path, {
+        "aps_linear": "function aps_linear()\n  a();\nend\n",
+        "a": "function a()\n  b();\nend\n",
+        "b": "function b()\n  a();\nend\n",
+    })
+    graph = audit.build_call_graph(root, ["aps_linear"])
+    assert {p.stem for p in graph} == {"aps_linear", "a", "b"}
+
+
+def test_call_graph_ignores_unresolved_calls(tmp_path: Path):
+    # `sprintf`, `disp` etc. are MATLAB builtins, not in the index.
+    root = _make_train(tmp_path, {
+        "aps_linear": "function aps_linear()\n  disp('hi');\n  sprintf('x');\nend\n",
+    })
+    graph = audit.build_call_graph(root, ["aps_linear"])
+    assert {p.stem for p in graph} == {"aps_linear"}
+    assert next(iter(graph.values())) == set()
+
+
+def test_call_graph_missing_entry_point_raises(tmp_path: Path):
+    root = _make_train(tmp_path, {"foo": "function foo()\nend\n"})
+    with pytest.raises(SystemExit) as exc:
+        audit.build_call_graph(root, ["aps_linear"])
+    assert "aps_linear" in str(exc.value)
+
+
+def test_call_graph_real_train(phase_root: Path):
+    """End-to-end against the real TRAIN clone at F:/phase/TRAIN."""
+    train_root = phase_root / "TRAIN"
+    if not (train_root / "matlab" / "aps_linear.m").exists():
+        pytest.skip("TRAIN clone not present at F:/phase/TRAIN")
+    graph = audit.build_call_graph(
+        train_root,
+        ["aps_linear", "aps_weather_model", "setparm_aps"],
+    )
+    names = {p.stem for p in graph}
+    # Sanity: entry points all reached.
+    assert {"aps_linear", "aps_weather_model", "setparm_aps"} <= names
+    # Sanity: aps_systemcall is reached (we know it's called transitively).
+    assert "aps_systemcall" in names
+    # Sanity: closure is non-trivial but bounded by total .m count (88).
+    assert 5 <= len(graph) <= 88
