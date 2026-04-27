@@ -291,3 +291,82 @@ def clone_train(
         return
     runner(["git", "clone", TRAIN_REPO_URL, str(dest)])
     runner(["git", "-C", str(dest), "checkout", commit])
+
+
+from datetime import date
+
+_SEVERITY_ORDER = ("HIGH", "MEDIUM", "LOW", "WARNING")
+
+_LIMITS_SECTION = """\
+## Limits of this analysis
+
+This is a static, regex-based audit. The following caveats apply:
+
+- **Dynamic dispatch** (`feval`, `eval`, function handles) is not followed.
+  Files reaching such call sites emit a `WARNING` finding so you can
+  manually inspect those branches.
+- **Path-separator audits** (`\\` vs `/`) are out of scope — too noisy.
+- **MATLAB toolbox-specific behavior** is out of scope.
+- **String-leaked patterns**: `'...'` literals are stripped, but multi-line
+  or concatenated strings may leak into the LOW band. Treat LOW as a hint,
+  not a verdict.
+
+For the runtime behavior of any flagged site, install TRAIN and exercise
+the code path in MATLAB.
+"""
+
+
+def render_report(
+    findings: list[Finding],
+    *,
+    train_commit: str,
+    files_scanned: int,
+    train_root: Path,
+) -> str:
+    today = date.today().isoformat()
+    counts = {s: sum(1 for f in findings if f.severity == s)
+              for s in _SEVERITY_ORDER}
+    head = [
+        "# TRAIN Windows compatibility audit",
+        "",
+        f"- **TRAIN commit:** `{train_commit}`",
+        f"- **Audit date:** {today}",
+        f"- **Files scanned:** {files_scanned}",
+        f"- **Findings:** "
+        + ", ".join(f"{s}={counts[s]}" for s in _SEVERITY_ORDER),
+        "",
+        _LIMITS_SECTION,
+    ]
+    if not findings:
+        head.append("## Result")
+        head.append("")
+        head.append("0 findings — closure is clean against the audited patterns.")
+        return "\n".join(head) + "\n"
+
+    body: list[str] = []
+    for sev in _SEVERITY_ORDER:
+        bucket = [f for f in findings if f.severity == sev]
+        if not bucket:
+            continue
+        body.append(f"## {sev} ({len(bucket)})")
+        body.append("")
+        # Group by file for readability.
+        by_file: dict[Path, list[Finding]] = {}
+        for f in bucket:
+            by_file.setdefault(f.file, []).append(f)
+        for file_path, items in sorted(by_file.items()):
+            try:
+                rel = file_path.relative_to(train_root).as_posix()
+            except ValueError:
+                rel = str(file_path)
+            body.append(f"### `{rel}`")
+            body.append("")
+            for item in items:
+                body.append(f"- **line {item.line}** — `{item.pattern}`")
+                body.append("")
+                body.append("  ```matlab")
+                for ln in item.snippet.splitlines():
+                    body.append(f"  {ln}")
+                body.append("  ```")
+                body.append("")
+    return "\n".join(head + body) + "\n"

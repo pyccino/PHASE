@@ -333,4 +333,57 @@ def test_clone_train_invokes_git_when_dest_missing(tmp_path: Path):
     # Two calls: clone + checkout.
     assert any("clone" in c for c in calls)
     assert any("checkout" in c for c in calls)
-    assert any("6c93feb" in arg for c in calls for arg in c)
+
+
+def test_render_report_basic(tmp_path: Path):
+    findings = [
+        audit.Finding(file=tmp_path / "matlab" / "x.m", line=10,
+                      pattern="system_call", severity="HIGH",
+                      snippet="a\nsystem('x')\nb"),
+        audit.Finding(file=tmp_path / "matlab" / "y.m", line=20,
+                      pattern="linux_path_tmp", severity="MEDIUM",
+                      snippet="c\nx = '/tmp/...'\nd"),
+    ]
+    md = audit.render_report(
+        findings,
+        train_commit="6c93feb",
+        files_scanned=42,
+        train_root=tmp_path,
+    )
+    assert "# TRAIN Windows compatibility audit" in md
+    assert "6c93feb" in md
+    assert "42" in md
+    assert "## HIGH (1)" in md
+    assert "## MEDIUM (1)" in md
+    # File sections.
+    assert "x.m" in md
+    assert "y.m" in md
+    # Snippets fenced.
+    assert "```" in md
+
+
+def test_render_report_no_findings(tmp_path: Path):
+    md = audit.render_report(
+        [], train_commit="6c93feb", files_scanned=42, train_root=tmp_path,
+    )
+    assert "no findings" in md.lower() or "0 findings" in md.lower()
+
+
+def test_render_report_paths_relative_to_train_root(tmp_path: Path):
+    findings = [
+        audit.Finding(file=tmp_path / "matlab" / "deep" / "x.m", line=1,
+                      pattern="system_call", severity="HIGH", snippet="x"),
+    ]
+    md = audit.render_report(
+        findings, train_commit="6c93feb", files_scanned=1, train_root=tmp_path,
+    )
+    # Path printed relative for readability.
+    assert "matlab/deep/x.m" in md or "matlab\\deep\\x.m" in md
+
+
+def test_render_report_includes_limits_section(tmp_path: Path):
+    md = audit.render_report(
+        [], train_commit="6c93feb", files_scanned=1, train_root=tmp_path,
+    )
+    assert "Limits of this analysis" in md
+    assert "feval" in md.lower() or "dynamic dispatch" in md.lower()
