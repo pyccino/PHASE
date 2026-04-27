@@ -164,15 +164,17 @@ def index_train_files(train_root: Path) -> dict[str, Path]:
     """Map basename (no .m) → absolute Path for every .m under train_root/matlab.
 
     If two `.m` files share a basename (rare but possible — TRAIN sometimes
-    has helper scripts in subdirs), the last one wins under `rglob` order
+    has helper scripts in subdirs), the last one wins after sorted iteration
     and a warning is emitted to stderr so the auditor knows a name clash
-    occurred.
+    occurred. Iteration is sorted so basename resolution is deterministic
+    across platforms (NTFS vs ext4 yield different `rglob` orders), which
+    keeps audit reports reproducible.
     """
     matlab_dir = train_root / "matlab"
     if not matlab_dir.is_dir():
         return {}
     idx: dict[str, Path] = {}
-    for p in matlab_dir.rglob("*.m"):
+    for p in sorted(matlab_dir.rglob("*.m")):
         if p.stem in idx:
             print(f"WARN: duplicate basename {p.stem}: "
                   f"{idx[p.stem]} vs {p}", file=sys.stderr)
