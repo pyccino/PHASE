@@ -147,3 +147,44 @@ def scan_linux_patterns(file_path: Path) -> list[Finding]:
                     snippet=_snippet(raw_lines, lineno),
                 ))
     return findings
+
+
+# MATLAB control-flow keywords that look like function calls.
+_MATLAB_KEYWORDS: frozenset[str] = frozenset({
+    "if", "elseif", "else", "for", "while", "switch", "case", "otherwise",
+    "end", "function", "return", "break", "continue", "try", "catch",
+    "global", "persistent", "classdef", "properties", "methods", "events",
+    "enumeration", "spmd", "parfor",
+})
+
+_CALL_RX = re.compile(r"\b([a-zA-Z][a-zA-Z0-9_]*)\s*\(")
+
+
+def index_train_files(train_root: Path) -> dict[str, Path]:
+    """Map basename (no .m) → absolute Path for every .m under train_root/matlab.
+
+    If two `.m` files share a basename (rare but possible — TRAIN sometimes
+    has helper scripts in subdirs), the last one wins under `rglob` order
+    and a warning is emitted to stderr so the auditor knows a name clash
+    occurred.
+    """
+    matlab_dir = train_root / "matlab"
+    if not matlab_dir.is_dir():
+        return {}
+    idx: dict[str, Path] = {}
+    for p in matlab_dir.rglob("*.m"):
+        if p.stem in idx:
+            print(f"WARN: duplicate basename {p.stem}: "
+                  f"{idx[p.stem]} vs {p}", file=sys.stderr)
+        idx[p.stem] = p
+    return idx
+
+
+def extract_calls(src: str) -> set[str]:
+    """Return the set of identifiers used as `name(` in src, after stripping
+    comments/strings and removing MATLAB keywords."""
+    cleaned = strip_matlab_noise(src)
+    return {
+        m.group(1) for m in _CALL_RX.finditer(cleaned)
+        if m.group(1) not in _MATLAB_KEYWORDS
+    }

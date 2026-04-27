@@ -142,3 +142,50 @@ def test_finding_carries_snippet_with_context(tmp_path: Path):
     assert "b = 2;" in snippet
     assert "system" in snippet
     assert "c = 3;" in snippet
+
+
+def test_index_train_files(tmp_path: Path):
+    matlab = tmp_path / "matlab"
+    matlab.mkdir()
+    (matlab / "foo.m").write_text("function foo(); end")
+    (matlab / "bar.m").write_text("function bar(); end")
+    (matlab / "sub").mkdir()
+    (matlab / "sub" / "baz.m").write_text("function baz(); end")
+    idx = audit.index_train_files(tmp_path)
+    assert set(idx.keys()) == {"foo", "bar", "baz"}
+    assert idx["foo"] == matlab / "foo.m"
+    assert idx["baz"] == matlab / "sub" / "baz.m"
+
+
+def test_index_missing_matlab_dir(tmp_path: Path):
+    # No matlab/ subdir → empty index, no exception.
+    idx = audit.index_train_files(tmp_path)
+    assert idx == {}
+
+
+def test_extract_calls_finds_function_invocations():
+    src = "x = foo(1, 2);\nbar();\nbaz_thing(y);\n"
+    calls = audit.extract_calls(src)
+    assert "foo" in calls
+    assert "bar" in calls
+    assert "baz_thing" in calls
+
+
+def test_extract_calls_ignores_keywords_and_struct_access():
+    # `if (...)`, `for (...)`, `while (...)` should not be treated as calls.
+    # `obj.method(...)` — we DO want `method` only if it resolves to an .m
+    # later, so extract_calls returns it; the index filter handles selection.
+    src = "if (x > 0)\n  y = obj.method(x);\nend\nfor i = 1:10\nend\n"
+    calls = audit.extract_calls(src)
+    assert "if" not in calls
+    assert "for" not in calls
+    assert "end" not in calls
+    assert "method" in calls
+
+
+def test_extract_calls_strips_strings_and_comments_first():
+    src = "% foo()\nbar();\nx = 'baz()';\n"
+    calls = audit.extract_calls(src)
+    assert "foo" not in calls
+    assert "baz" not in calls
+    assert "bar" in calls
