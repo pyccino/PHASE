@@ -62,7 +62,10 @@ gmt_version
 
 # Test datasets and downloaded archives (large, regenerable, per-user)
 test_dataset/
+test_snap13/
+installers/
 *.tar.gz
 *.tgz
 transfer_*.zip
+Phase.zip
 *.7z

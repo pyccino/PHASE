@@ -56,6 +56,42 @@ except SystemExit as _e:
 except Exception as _e:
     print(f"WARN: SRTM pre-cache skipped due to unexpected error: {_e}")
 
+# SNAP 13 NPE fix: detect .dim products written by an older SNAP than the
+# gpt that's about to read them. The TPG serialization changed between
+# SNAP 9 and SNAP 13 — feeding legacy .dim into SNAP 13's StampsExport
+# triggers a silent NullPointerException and StaMPS later hangs mid-PSI.
+# Warn the user up-front to re-run the pipeline from .SAFE.zip with one
+# consistent SNAP version.
+try:
+    import snap_dim_version_check as _sdv
+
+    _conf_text = Path(inputfile).read_text(encoding="utf-8")
+    _coreg_dir = None
+    _ifg_dir = None
+    _gpt = None
+    _project = None
+    for _ln in _conf_text.splitlines():
+        if "=" not in _ln:
+            continue
+        _k, _, _v = _ln.partition("=")
+        _k = _k.strip(); _v = _v.split("#", 1)[0].strip()
+        if _k == "PROJECTFOLDER":
+            _project = Path(_v)
+        elif _k == "GPTBIN_PATH":
+            _gpt = Path(_v)
+    if _project is not None and _gpt is not None:
+        _coreg_dir = _project / "coreg"
+        _ifg_dir = _project / "ifg"
+        _dims = []
+        for _d in (_coreg_dir, _ifg_dir):
+            if _d.is_dir():
+                _dims.extend(sorted(_d.glob("*.dim")))
+        if _dims:
+            _ver_report = _sdv.check_compatibility(_dims, _gpt)
+            _sdv.warn_if_mismatch(_ver_report)
+except Exception as _e:
+    print(f"WARN: SNAP version-mismatch check skipped: {_e}")
+
 # Getting configuration variables from inputfile
 print("############################# STEP 4 ################################\n")
 print("## INPUT PARAMETERS ##")

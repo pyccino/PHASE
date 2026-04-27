@@ -105,9 +105,34 @@ The module generates a comprehensive Excel report across multiple sheets:
 A shapefile and .mat file are generated in WGS84 (EPSG:4326) coordinates, including PS data, velocities, uncertainties, and risks for GIS compatibility.
 
 ## Possible Errors and Solutions
-The procedure has been tested on SNAP 9.x, Python 2.7, Python 3.11, Ubuntu 20.04, Windows 10, macOS Sequoia (15.1), and MATLAB 2025a. <br>
+The procedure has been tested on SNAP 9.x and 13.x, Python 2.7, Python 3.11, Python 3.13, Ubuntu 20.04, Windows 10, macOS Sequoia (15.1), and MATLAB 2025a/2026a. <br>
 > [!TIP]
 > Refer to the manual for solutions to common errors encountered during the StaMPS processing.
+
+## SNAP version selection (Sentinel-1A/1B/1C/1D)
+
+PHASE preprocessing supports both **SNAP 9.x** (legacy) and **SNAP 13.x** (recommended). Choose based on which Sentinel-1 satellites your dataset includes:
+
+- **SNAP 9.x**: supports Sentinel-1A and Sentinel-1B only. Sentinel-1C (launched Dec 2024) and Sentinel-1D are **not** supported by the SNAP 9 product readers.
+- **SNAP 13.x**: supports the full Sentinel-1A/1B/1C/1D constellation natively. **Required for any dataset containing S1C or S1D acquisitions.**
+
+Point `GPTBIN_PATH` in your `project.conf` to the SNAP version you want PHASE to use:
+```
+GPTBIN_PATH = C:/Program Files/snap13/bin/gpt.exe   # SNAP 13 (S1A/B/C/D)
+# GPTBIN_PATH = C:/Program Files/snap/bin/gpt.exe   # SNAP 9  (S1A/B only)
+```
+
+### Important: do not mix SNAP-9 and SNAP-13 .dim products
+
+SNAP 13's `StampsExport` operator raises `NullPointerException` on tie-point grids written by SNAP 9 (the BEAM-DIMAP TPG format changed between majors). The error is silent — StaMPS later hangs mid-PSI without a clear diagnostic.
+
+PHASE's `SEN_stamps_export.py` automatically detects this mismatch and prints an actionable warning before launching `gpt`. The fix is to **re-run the full preprocessing pipeline** (split + coregistration + interferogram) from the original `.SAFE.zip` files using the same SNAP version that will run `StampsExport`.
+
+### SRTM 3Sec auto-cache
+
+`StampsExport` has SRTM 3Sec hardcoded for the lat/lon geocoding output, regardless of the DEM chosen for coregistration. When the auto-download fails (offline, mirror down, or — on SNAP 13 — silently for some inputs), the geo files are partially corrupted and StaMPS hangs mid-PSI. PHASE pre-caches the required SRTM tiles into `%USERPROFILE%/.snap/auxdata/dem/SRTM 3Sec/` automatically before each `StampsExport` run, eliminating that failure mode.
+
+This requires the project AOI to be present in `project.conf` as `LATMIN`, `LATMAX`, `LONMIN`, `LONMAX`. If the keys are absent the pre-cache is skipped (with a warning) and `StampsExport` falls back to the standard SNAP auto-download path.
 
 ## Verifying TRAIN on Windows
 
