@@ -70,8 +70,9 @@ switch projDim
             colorbar(gx);
             title(gx,sprintf('LOS displacement on %s (2D)', datestr(t_dateIN(t))), 'FontSize', 18);
             hold(gx, 'off');
-            frame = getframe(gcf);
-            im = frame2im(frame);
+            % R2026a-compat: getframe on invisible figures hangs; use
+            % print('-RGBImage') which goes through the print pipeline.
+            im = print(gcf, '-RGBImage');
             [imind, cm] = rgb2ind(im, 256);
             if t == 1
                 imwrite(imind, cm, fullfile(figsDir, 'NNI_displ2D.gif'), 'gif', 'Loopcount', inf, 'DelayTime', 0.5);
@@ -160,8 +161,9 @@ switch projDim
             colorbar(gx);
             title(gx,sprintf('LOS displacement on %s (1D)', datestr(t_dateIN(t))), 'FontSize', 18);
             hold(gx, 'off');
-            frame = getframe(gcf);
-            im = frame2im(frame);
+            % R2026a-compat: getframe on invisible figures hangs; use
+            % print('-RGBImage') which goes through the print pipeline.
+            im = print(gcf, '-RGBImage');
             [imind, cm] = rgb2ind(im, 256);
             if t == 1
                 imwrite(imind, cm, fullfile(figsDir, 'NNI_displ1D.gif'), 'gif', 'Loopcount', inf, 'DelayTime', 0.5);

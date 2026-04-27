@@ -126,7 +126,7 @@ After the TRAIN Windows port, verify your install with these three checks.
 
 ### 2. Linear correction (`a_linear`)
 
-1. Install TRAIN at the audited commit: `git clone https://github.com/dbekaert/TRAIN.git C:/TRAIN && cd C:/TRAIN && git checkout 6c93feb`.
+1. Install TRAIN (Windows-patched fork): `git clone --branch windows-port/main https://github.com/Tiopio01/TRAIN.git C:/TRAIN`.
 2. In MATLAB: `addpath(genpath('C:/TRAIN/matlab')); savepath`.
 3. Verify: `which('aps_linear')` returns `C:\TRAIN\matlab\aps_linear.m`.
 4. Launch `PHASE_StaMPS.mlapp`. Tick TRAIN. Set `tropo_method='a_linear'`. Save, Start.
@@ -136,9 +136,15 @@ After the TRAIN Windows port, verify your install with these three checks.
    - Output contains `Atmosphere_a_linear_AOI_PS.mat` and `Atmosphere_a_linear_*.csv`.
    - Velocity values differ from a run with TRAIN unchecked.
 
+> **Note on the Windows fork.** `Tiopio01/TRAIN` (`windows-port/main`) is forked from `dbekaert/TRAIN` at the audited commit `6c93feb` plus two Windows-specific fixes:
+> - `get_gmt_version.m`: actionable error on Windows when GMT is not on PATH (the upstream loop manipulates Linux-only library env vars).
+> - `aps_gacos_files.m`: replaces Unix `&` background launch with synchronous `system()` call on Windows (cmd.exe parses `&` differently).
+>
+> Unix/Mac behavior is unchanged. Use upstream `dbekaert/TRAIN` directly on Linux/macOS if preferred.
+
 ### 3. GACOS correction (`a_gacos`) — optional, requires gacos.net data request
 
-1. Same TRAIN install as above.
+1. Same TRAIN install as above. Additionally install [GMT for Windows](https://www.generic-mapping-tools.org/download/) and ensure `C:\Program Files\GMT\bin` (or your install dir) is on PATH; verify with `gmt --version` in a fresh terminal.
 2. Launch `PHASE_StaMPS.mlapp`. Tick TRAIN. Set `tropo_method='a_gacos'`. Save, Start.
 3. Expected:
    - MATLAB pauses at `keyboard` after creating `GACOS/` and `GACOS_download_info.txt`.
