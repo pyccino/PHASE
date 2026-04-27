@@ -257,3 +257,37 @@ def verify_train_clone(dest: Path, expected_commit: str) -> None:
             f"Refusing to overwrite. Either checkout the audited commit or "
             f"pass --commit <new-sha>."
         )
+
+
+from typing import Callable
+
+TRAIN_REPO_URL = "https://github.com/dbekaert/TRAIN.git"
+
+
+def _default_git_runner(cmd: list[str]) -> None:
+    subprocess.run(cmd, check=True)
+
+
+def clone_train(
+    dest: Path,
+    commit: str,
+    *,
+    runner: Callable[[list[str]], None] = _default_git_runner,
+    verify: Callable[[Path, str], None] | None = None,
+) -> None:
+    """Clone TRAIN into `dest` and check out `commit`. If `dest` already
+    exists, only verify that its HEAD matches `commit` (no overwrite).
+    The `runner` and `verify` parameters exist for tests.
+
+    `verify` defaults to a lazy lookup of `verify_train_clone` so
+    monkeypatching the module attribute in tests works as expected.
+    """
+    if verify is None:
+        # Resolve at call time so tests that monkeypatch
+        # audit.verify_train_clone are honored.
+        verify = verify_train_clone
+    if dest.exists():
+        verify(dest, commit)
+        return
+    runner(["git", "clone", TRAIN_REPO_URL, str(dest)])
+    runner(["git", "-C", str(dest), "checkout", commit])

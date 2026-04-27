@@ -307,3 +307,30 @@ def test_verify_clone_raises_when_not_a_repo(tmp_path: Path):
     # tmp_path exists but is not a git repo.
     with pytest.raises(SystemExit):
         audit.verify_train_clone(tmp_path, "abc123")
+
+
+def test_clone_train_skips_when_dest_exists(tmp_path: Path):
+    sha = _git_init_with_commit(tmp_path)
+    calls: list[list[str]] = []
+    def fake_runner(cmd: list[str]) -> None:
+        calls.append(cmd)
+    audit.clone_train(tmp_path, sha, runner=fake_runner)
+    # Dest exists → no clone, no checkout. Function should return silently
+    # after verifying. (verify_train_clone is called internally.)
+    assert calls == []
+
+
+def test_clone_train_invokes_git_when_dest_missing(tmp_path: Path):
+    dest = tmp_path / "fresh"
+    calls: list[list[str]] = []
+    def fake_runner(cmd: list[str]) -> None:
+        calls.append(cmd)
+        # Simulate clone creating the dir on first call.
+        if "clone" in cmd:
+            dest.mkdir()
+    audit.clone_train(dest, "6c93feb", runner=fake_runner,
+                      verify=lambda _d, _c: None)  # skip verify in unit test.
+    # Two calls: clone + checkout.
+    assert any("clone" in c for c in calls)
+    assert any("checkout" in c for c in calls)
+    assert any("6c93feb" in arg for c in calls for arg in c)
