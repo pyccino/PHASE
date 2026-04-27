@@ -2,6 +2,9 @@
 StaMPS/
 TRAIN/
 
+# Audit reports (regenerable from script + TRAIN commit)
+reports/
+
 # macOS system files
 .DS_Store
 **/.DS_Store
