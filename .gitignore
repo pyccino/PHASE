@@ -55,3 +55,14 @@ output_*/
 .out.txt
 .par.txt
 .std.txt
+
+# TRAIN runtime artifacts (generated in cwd by setparm_aps / get_gmt_version)
+parms_aps.mat
+gmt_version
+
+# Test datasets and downloaded archives (large, regenerable, per-user)
+test_dataset/
+*.tar.gz
+*.tgz
+transfer_*.zip
+*.7z
