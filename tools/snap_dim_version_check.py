@@ -26,21 +26,41 @@ import re
 import subprocess
 from pathlib import Path
 
-# `.dim` files written by SNAP record their producing version as
-# `<MDATTR name="snap_version">10.0.0</MDATTR>` (or similar) inside the
-# Processing_Graph metadata block.
-_DIM_VERSION_RX = re.compile(
-    r'<MDATTR\s+name="processing_software_version"[^>]*>\s*'
+# What SNAP actually writes in BEAM-DIMAP `.dim` files
+# ------------------------------------------------------
+# Each Processing_Graph node carries a `moduleVersion` MDATTR which tracks
+# the version of the SNAP framework / S1TBX module that ran the step:
+#   <MDATTR name="moduleVersion" type="ascii" mode="rw">9.0.0</MDATTR>
+#   <MDATTR name="moduleVersion" type="ascii" mode="rw">13.0.0</MDATTR>
+# All nodes of a single `.dim` carry the same value (= the SNAP build that
+# produced the product). We pick the highest moduleVersion seen to be
+# robust against products that mixed third-party operators with older
+# embedded versions.
+#
+# Two earlier regex hypotheses (`processing_software_version`,
+# `snap_version`) do NOT match real SNAP output — those keys exist in some
+# documentation examples but not in actual `.dim` files emitted by gpt.
+_DIM_MODULE_VERSION_RX = re.compile(
+    r'<MDATTR\s+name="moduleVersion"[^>]*>\s*'
     r'(?P<ver>\d+\.\d+(?:\.\d+)?)\s*</MDATTR>',
     re.IGNORECASE,
 )
 
-# Fallback: SNAP also writes `<MDATTR name="processing_software_name">SNAP</MDATTR>`
-# alongside the version in newer formats.
-_DIM_VERSION_RX_ALT = re.compile(
+# Legacy fallback: kept so synthetic test fixtures and any hand-edited
+# `.dim` using these keys still get recognized.
+_DIM_VERSION_LEGACY_RX = re.compile(
+    r'<MDATTR\s+name="processing_software_version"[^>]*>\s*'
+    r'(?P<ver>\d+\.\d+(?:\.\d+)?)\s*</MDATTR>',
+    re.IGNORECASE,
+)
+_DIM_VERSION_LEGACY_RX_ALT = re.compile(
     r'<MDATTR[^>]*name="snap_version"[^>]*>\s*(?P<ver>\d+\.\d+(?:\.\d+)?)',
     re.IGNORECASE,
 )
+
+
+def _version_tuple(ver: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in ver.split("."))
 
 
 def detect_dim_snap_version(dim_path: Path) -> str | None:
@@ -52,8 +72,12 @@ def detect_dim_snap_version(dim_path: Path) -> str | None:
         text = dim_path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
-    for rx in (_DIM_VERSION_RX, _DIM_VERSION_RX_ALT):
-        for m in rx.finditer(text):
+    versions = [m.group("ver") for m in _DIM_MODULE_VERSION_RX.finditer(text)]
+    if versions:
+        return max(versions, key=_version_tuple)
+    for rx in (_DIM_VERSION_LEGACY_RX, _DIM_VERSION_LEGACY_RX_ALT):
+        m = rx.search(text)
+        if m:
             return m.group("ver")
     return None
 

@@ -14,6 +14,78 @@ import snap_dim_version_check as sdv
 
 # ---- detect_dim_snap_version --------------------------------------------
 
+def test_detect_dim_version_module_version_snap9(tmp_path: Path):
+    """SNAP writes the producing version as `moduleVersion` on every
+    Processing_Graph node — this is what real `.dim` files contain."""
+    f = tmp_path / "p.dim"
+    f.write_text(
+        '<Dimap_Document>\n'
+        '  <Dataset_Sources><MDElem name="metadata">\n'
+        '    <MDElem name="Processing_Graph">\n'
+        '      <MDElem name="node.0">\n'
+        '        <MDATTR name="moduleVersion" type="ascii" mode="rw">9.0.0</MDATTR>\n'
+        '      </MDElem>\n'
+        '      <MDElem name="node.1">\n'
+        '        <MDATTR name="moduleVersion" type="ascii" mode="rw">9.0.0</MDATTR>\n'
+        '      </MDElem>\n'
+        '    </MDElem>\n'
+        '  </MDElem></Dataset_Sources>\n'
+        '</Dimap_Document>\n',
+        encoding="utf-8",
+    )
+    assert sdv.detect_dim_snap_version(f) == "9.0.0"
+
+
+def test_detect_dim_version_module_version_snap13(tmp_path: Path):
+    f = tmp_path / "p.dim"
+    f.write_text(
+        '<Dimap_Document>\n'
+        '  <MDElem name="Processing_Graph">\n'
+        '    <MDElem name="node.0">\n'
+        '      <MDATTR name="moduleVersion" type="ascii" mode="rw">13.0.0</MDATTR>\n'
+        '    </MDElem>\n'
+        '  </MDElem>\n'
+        '</Dimap_Document>\n',
+        encoding="utf-8",
+    )
+    assert sdv.detect_dim_snap_version(f) == "13.0.0"
+
+
+def test_detect_dim_version_module_version_picks_highest(tmp_path: Path):
+    """Robustness: if a third-party operator embeds an older moduleVersion,
+    the SNAP-framework nodes (highest version) win."""
+    f = tmp_path / "p.dim"
+    f.write_text(
+        '<MDElem name="Processing_Graph">\n'
+        '  <MDATTR name="moduleVersion" type="ascii">13.0.0</MDATTR>\n'
+        '  <MDATTR name="moduleVersion" type="ascii">2.5.1</MDATTR>\n'
+        '  <MDATTR name="moduleVersion" type="ascii">13.0.0</MDATTR>\n'
+        '</MDElem>\n',
+        encoding="utf-8",
+    )
+    assert sdv.detect_dim_snap_version(f) == "13.0.0"
+
+
+def test_detect_dim_version_real_snap9_artifact():
+    """Smoke-test against an actual SNAP 9 .dim from the Bolsena dataset."""
+    real = (Path(__file__).resolve().parent.parent
+            / "PHASE_fork" / "PHASE_Preprocessing" / "master"
+            / "S1A_IW_SLC__1SDV_20240715T052011_20240715T052038_054767_06AB2A_6A8C_split_IW1_Orb.dim")
+    if not real.is_file():
+        pytest.skip(f"real artifact not present: {real}")
+    assert sdv.detect_dim_snap_version(real) == "9.0.0"
+
+
+def test_detect_dim_version_real_snap13_artifact():
+    """Smoke-test against an actual SNAP 13 .dim from a previous run."""
+    real = (Path(__file__).resolve().parent.parent
+            / "test_snap13" / "Phase" / "PHASE_fork" / "PHASE_Preprocessing"
+            / "coreg" / "_20240703.dim")
+    if not real.is_file():
+        pytest.skip(f"real artifact not present: {real}")
+    assert sdv.detect_dim_snap_version(real) == "13.0.0"
+
+
 def test_detect_dim_version_processing_software(tmp_path: Path):
     f = tmp_path / "p.dim"
     f.write_text(
