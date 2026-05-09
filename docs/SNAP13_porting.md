@@ -4,7 +4,7 @@
 **Scope**: Migrazione del preprocessing PHASE da SNAP 9.0 a SNAP 13.0 per abilitare il processamento delle immagini Sentinel-1C e Sentinel-1D, e risoluzione della catena di bug che impediva la pipeline end-to-end su Windows.
 **Repo coinvolti**:
 - [`Tiopio01/PHASE`](https://github.com/Tiopio01/PHASE) branch `windows-port/train-audit`
-- [`Tiopio01/StaMPS`](https://github.com/Tiopio01/StaMPS) branch `windows-port/main`
+- [`Tiopio01/StaMPS`](https://github.com/Tiopio01/StaMPS) branch `main` (default)
 - [`Tiopio01/StaMPS` release `windows-port-bins-v1`](https://github.com/Tiopio01/StaMPS/releases/tag/windows-port-bins-v1) — binari Windows pre-compilati
 
 ---
@@ -319,7 +319,7 @@ Anomalie pre-esistenti segnalate (fuori scope SNAP 13):
 | `tools/snap_dim_version_check.py` (regex `moduleVersion`) + 16 unit test | idem |
 | `SEN_stamps_export.py` aggiornato (precache + version-check) | idem |
 | `README.md` con sezione SNAP version selection | idem |
-| Fix CRLF in `mt_prep_snap.py` | [Tiopio01/StaMPS@windows-port/main](https://github.com/Tiopio01/StaMPS/tree/windows-port/main) |
+| Fix CRLF in `mt_prep_snap.py` | [Tiopio01/StaMPS@main](https://github.com/Tiopio01/StaMPS/tree/main) |
 | `StaMPS/matlab_compat/gausswin.m` (Signal Processing Toolbox fallback) | idem |
 | 7 binari Windows pre-compilati | [Tiopio01/StaMPS release `windows-port-bins-v1`](https://github.com/Tiopio01/StaMPS/releases/tag/windows-port-bins-v1) |
 | Pull request upstream | [pyccino/PHASE#1](https://github.com/pyccino/PHASE/pull/1) |
@@ -334,7 +334,7 @@ Anomalie pre-esistenti segnalate (fuori scope SNAP 13):
    ```
    Il default (`-Xmx4G`) causa `OutOfMemoryError` su SLC Sentinel-1 reali. Bumpare a 10G (o ≥8G) è **prerequisito operativo non-opzionale**. Su sistemi con RAM < 8 GB, splittare la pipeline (vedi §7.2).
 3. **Clone PHASE** da `Tiopio01/PHASE` branch `windows-port/train-audit`.
-4. **Clone StaMPS** da `Tiopio01/StaMPS` branch `windows-port/main`.
+4. **Clone StaMPS** da `Tiopio01/StaMPS` (branch default `main`): `git clone https://github.com/Tiopio01/StaMPS.git`.
 5. **Download release** `windows-port-bins-v1` ed estrarre i 7 `.exe` in `<StaMPS>/bin/`.
 6. **Configurare `project.conf`** con:
    ```

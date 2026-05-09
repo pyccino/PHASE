@@ -4,7 +4,7 @@
 **Scope**: Sostituzione del popup interattivo `ginput` di StaMPS (`StaMPS/matlab/ts_plot.m:43`, accessibile dai pushbutton di `ps_plot('v','ts',...)` a `StaMPS/matlab/ps_plot.m:2218-2238`) con un picker grafico embedded direttamente nella nuova tab "TS Points" di `PHASE_Preprocessing/PHASE_StaMPS.mlapp`. Niente più finestra che blocca la sessione MATLAB durante una run PSI; selezione dei punti d'interesse driven da CSV, GUI o coordinate manuali.
 **Repo coinvolti**:
 - [`Tiopio01/PHASE`](https://github.com/Tiopio01/PHASE) branch `windows-port/train-audit`
-- [`Tiopio01/StaMPS`](https://github.com/Tiopio01/StaMPS) branch `windows-port/main`
+- [`Tiopio01/StaMPS`](https://github.com/Tiopio01/StaMPS) branch `main` (default)
 
 ---
 
