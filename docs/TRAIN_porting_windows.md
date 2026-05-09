@@ -2,7 +2,7 @@
 
 **Data**: 27 aprile 2026
 **Scope**: Port di [TRAIN](https://github.com/dbekaert/TRAIN) (Toolbox for Reducing Atmospheric InSAR Noise) per l'uso da parte di PHASE su Windows.
-**Fork**: [`Tiopio01/TRAIN`](https://github.com/Tiopio01/TRAIN) branch `windows-port/main`
+**Fork**: [`Tiopio01/TRAIN`](https://github.com/Tiopio01/TRAIN) branch `main` (default)
 **Base upstream**: `dbekaert/TRAIN @ 6c93feb`
 
 ---
@@ -247,7 +247,7 @@ Per usare il fork patchato in produzione:
 
 ```bash
 # 1. Clone del fork (NON dell'upstream, per avere le patch Windows)
-git clone --branch windows-port/main https://github.com/Tiopio01/TRAIN.git C:/TRAIN
+git clone https://github.com/Tiopio01/TRAIN.git C:/TRAIN
 ```
 
 ```matlab
@@ -318,7 +318,7 @@ Atteso (per AOI Calabria 30km): `Shape: 418x358, range: 1.940 - 2.479 m`.
 
 | Componente | Location | Stato |
 |---|---|---|
-| Fork TRAIN patchato | [`Tiopio01/TRAIN @ windows-port/main`](https://github.com/Tiopio01/TRAIN/tree/windows-port/main) | Live |
+| Fork TRAIN patchato | [`Tiopio01/TRAIN @ main`](https://github.com/Tiopio01/TRAIN/tree/main) | Live |
 | Audit tool statico | `F:/phase/tools/audit_train_windows_compat.py` | Funzionante |
 | Test suite audit tool | `F:/phase/tests/test_audit_train_windows_compat.py` | 39/39 PASS |
 | README PHASE aggiornato | `F:/phase/README.md` (sezione "Verifying TRAIN on Windows") | Punta al fork |
