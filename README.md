@@ -151,7 +151,7 @@ After the TRAIN Windows port, verify your install with these three checks.
 
 ### 2. Linear correction (`a_linear`)
 
-1. Install TRAIN (Windows-patched fork): `git clone --branch windows-port/main https://github.com/Tiopio01/TRAIN.git C:/TRAIN`.
+1. Install TRAIN (Windows-patched fork): `git clone https://github.com/Tiopio01/TRAIN.git C:/TRAIN`.
 2. In MATLAB: `addpath(genpath('C:/TRAIN/matlab')); savepath`.
 3. Verify: `which('aps_linear')` returns `C:\TRAIN\matlab\aps_linear.m`.
 4. Launch `PHASE_StaMPS.mlapp`. Tick TRAIN. Set `tropo_method='a_linear'`. Save, Start.
@@ -161,7 +161,7 @@ After the TRAIN Windows port, verify your install with these three checks.
    - Output contains `Atmosphere_a_linear_AOI_PS.mat` and `Atmosphere_a_linear_*.csv`.
    - Velocity values differ from a run with TRAIN unchecked.
 
-> **Note on the Windows fork.** `Tiopio01/TRAIN` (`windows-port/main`) is forked from `dbekaert/TRAIN` at the audited commit `6c93feb` plus two Windows-specific fixes:
+> **Note on the Windows fork.** `Tiopio01/TRAIN` (default branch `main`) is forked from `dbekaert/TRAIN` at the audited commit `6c93feb` plus two Windows-specific fixes:
 > - `get_gmt_version.m`: actionable error on Windows when GMT is not on PATH (the upstream loop manipulates Linux-only library env vars).
 > - `aps_gacos_files.m`: replaces Unix `&` background launch with synchronous `system()` call on Windows (cmd.exe parses `&` differently).
 >
