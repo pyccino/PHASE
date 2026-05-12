@@ -249,7 +249,7 @@ function Install-GmtSilent {
     )
     $existing = Find-Gmt
     if ($existing) {
-        & $StatusCallback "GMT gia' presente: $existing"
+        & $StatusCallback "GMT already present: $existing"
         # Anche se gia' presente, mi assicuro che <bin> sia su PATH user
         $existingBin = Split-Path -Parent $existing
         Add-DirToUserPath -Dir $existingBin -StatusCallback $StatusCallback
@@ -259,7 +259,7 @@ function Install-GmtSilent {
     $destDir = Join-Path $env:LOCALAPPDATA 'PHASE\gmt'
     $gmtExe  = Join-Path $destDir 'bin\gmt.exe'
 
-    & $StatusCallback 'Download GMT 6.6.0 portable (~182 MB, puo richiedere 2-5 minuti)...'
+    & $StatusCallback 'Downloading GMT 6.6.0 portable (~182 MB, may take 2-5 min)...'
     $tmpZip = Join-Path $env:TEMP "gmt-portable_$(Get-Random).zip"
     try {
         Get-RemoteFile -Url $Script:GmtZipUrl -OutFile $tmpZip -ProgressCallback $ProgressCallback | Out-Null
@@ -297,7 +297,7 @@ function Add-DirToUserPath {
     )
     $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
     if ($userPath -and ($userPath -split ';' | Where-Object { $_ -ieq $Dir })) {
-        & $StatusCallback "$Dir gia' su PATH user"
+        & $StatusCallback "$Dir already on user PATH"
         return
     }
     $newPath = if ($userPath) { "$userPath;$Dir" } else { $Dir }
@@ -322,7 +322,7 @@ function Install-PortableGit {
     $gitExe  = Join-Path $destDir 'bin\git.exe'
 
     if (Test-Path $gitExe) {
-        & $StatusCallback "Portable Git gia' presente in $destDir"
+        & $StatusCallback "Portable Git already present at $destDir"
         return $gitExe
     }
 
@@ -476,7 +476,12 @@ function Invoke-SnapInstaller {
     param(
         [string]$InstallerPath,         # optional: local pre-staged installer
         [scriptblock]$StatusCallback,
-        [scriptblock]$ProgressCallback  # optional: download progress %
+        [scriptblock]$ProgressCallback,         # optional: download progress %
+        [scriptblock]$InstallStartCallback      # optional: signalled when the
+                                                # download finishes and the
+                                                # install4j run begins. UI uses
+                                                # this to switch the progress
+                                                # bar to indeterminate marquee.
     )
     $statusCb = if ($StatusCallback) { $StatusCallback } else { { param($m) Write-Host $m } }
 
@@ -502,6 +507,7 @@ function Invoke-SnapInstaller {
 
     try {
         & $statusCb 'Running SNAP installer silently (~3-5 min, UAC required)...'
+        if ($InstallStartCallback) { & $InstallStartCallback }
 
         # Attempt 1: silent install
         $proc = Start-Process -FilePath $InstallerPath `
@@ -545,7 +551,7 @@ function Invoke-GitClone {
         #   3. fetch origin <Branch>
         #   4. checkout -B <Branch> FETCH_HEAD       (anche su storia divergente
         #                                             - bypassa il ff-only)
-        & $StatusCallback "Repo gia' presente in $Destination - aggiorno a origin/$Branch..."
+        & $StatusCallback "Repo already present at $Destination - updating to origin/$Branch..."
         $null = Start-Process -FilePath $GitExe -ArgumentList @('-C', $Destination, 'remote', 'set-url', 'origin', $Repo) -Wait -PassThru -NoNewWindow
         $null = Start-Process -FilePath $GitExe -ArgumentList @('-C', $Destination, 'reset', '--hard', 'HEAD') -Wait -PassThru -NoNewWindow
         $pFetch = Start-Process -FilePath $GitExe -ArgumentList @('-C', $Destination, 'fetch', 'origin', $Branch) -Wait -PassThru -NoNewWindow
@@ -750,7 +756,7 @@ function Invoke-MatlabSavePath {
     $tmpScript = Join-Path $env:TEMP "phase_savepath_$(Get-Random).m"
     Set-Content -Path $tmpScript -Value ($mLines -join "`r`n") -Encoding ASCII
 
-    & $StatusCallback 'MATLAB savepath + setup input_StaMPS.mat (può richiedere 30-60s)...'
+    & $StatusCallback 'MATLAB savepath + writing input_StaMPS.mat (may take 30-60s)...'
 
     # Uso System.Diagnostics.Process direttamente. Start-Process con
     # -NoNewWindow + -Wait + -RedirectStandardOutput non funziona affidabile
@@ -827,7 +833,7 @@ function Invoke-MlappAutoLoadPatch {
 
         # Verifica che la patch non sia gia' stata applicata (idempotenza)
         if ($content.Contains('AUTO-LOAD (PHASE installer)')) {
-            & $StatusCallback "$([System.IO.Path]::GetFileName($MlappPath)): patch gia' presente, skip"
+            & $StatusCallback "$([System.IO.Path]::GetFileName($MlappPath)): patch already applied, skipping"
             return $true
         }
 
@@ -974,7 +980,7 @@ function Invoke-StampsBinariesDownload {
                   'psclonlat.exe', 'selpsc_patch.exe', 'selsbc_patch.exe')
     $missing = $required | Where-Object { -not (Test-Path (Join-Path $binDir $_)) }
     if ($missing.Count -eq 0) {
-        & $StatusCallback "Tutti i 7 .exe StaMPS gia' presenti in $binDir, skip download"
+        & $StatusCallback "All 7 StaMPS .exe already present at $binDir, skipping download"
         return $true
     }
     & $StatusCallback "Mancano $($missing.Count)/7 .exe StaMPS, scarico stamps-win64-binaries.zip..."
@@ -997,7 +1003,7 @@ function Invoke-StampsBinariesDownload {
             $totalRead += $read
         }
         $out.Close(); $in.Close(); $resp.Close()
-        & $StatusCallback "Download completato ($([math]::Round($totalRead/1MB,1)) MB)"
+        & $StatusCallback "Download complete ($([math]::Round($totalRead/1MB,1)) MB)"
 
         # Estrai i 7 .exe in $binDir
         Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
@@ -1773,7 +1779,7 @@ function Update-MatlabToolboxStatus {
         (Get-Element 'MatlabToolboxHeader').Text = "Toolbox MATLAB - $($missingRequired.Count) richiesta/e mancanti"
         (Get-Element 'MatlabToolboxHeader').Foreground = '#FFA04000'
         (Get-Element 'MatlabToolboxHint').Visibility = 'Visible'
-        (Get-Element 'MatlabToolboxHint').Text = "Per installare le toolbox mancanti: apri MATLAB -> Home -> Add-Ons -> Get Add-Ons -> cerca il nome -> Install. Sei gia' loggato in MATLAB, nessuna credenziale extra richiesta. Puoi proseguire l'installer adesso e fare l'aggiunta toolbox in un secondo momento."
+        (Get-Element 'MatlabToolboxHint').Text = "To install missing toolboxes: open MATLAB -> Home -> Add-Ons -> Get Add-Ons -> search by name -> Install. You are already signed in to MATLAB, no extra credentials required. You can continue the wizard now and add the toolboxes later."
     }
     (Get-Element 'MatlabToolboxStatus').Visibility = 'Visible'
 }
@@ -1853,19 +1859,19 @@ function Update-DestValidation {
     $valid = $false
     $hint = ''
     if (-not $path) {
-        $hint = 'Specifica una cartella di destinazione.'
+        $hint = 'Specify a destination folder.'
     } elseif ($path -match '[^\x00-\x7F]') {
-        $hint = 'Caratteri non-ASCII rilevati. Usa una cartella con solo caratteri ASCII.'
+        $hint = 'Non-ASCII characters detected. Use a folder with ASCII characters only.'
     } elseif ($path -like '*OneDrive*') {
-        $hint = '[!] Path sotto OneDrive: rischio di file lock durante i run lunghi. Consigliato cambiare.'
+        $hint = '[!] Path under OneDrive: risk of file locks during long runs. Recommended to change.'
         $valid = $true   # warning, non blocco
     } else {
         $parent = Split-Path -Parent $path
         if (-not $parent -or (Test-Path $parent)) {
             $valid = $true
-            $hint = if (Test-Path $path) { "La cartella esiste già: se contiene già PHASE l'installer la riusa, altrimenti ci scriverà dentro." } else { "La cartella verrà creata." }
+            $hint = if (Test-Path $path) { "The folder already exists: if it already contains PHASE the installer will reuse it, otherwise it will write into it." } else { "The folder will creata." }
         } else {
-            $hint = "La cartella padre $parent non esiste."
+            $hint = "The parent folder $parent does not exist."
         }
     }
     (Get-Element 'DestHint').Text = $hint
@@ -2179,9 +2185,13 @@ function Set-SetupProgress {
 
 (Get-Element 'InstallSnapBtn').Add_Click({
     (Get-Element 'InstallSnapBtn').IsEnabled = $false
-    (Get-Element 'InstallSnapBtn').Content = 'Starting...'
-    # Show progress bar + status text (used by the download stage when no
-    # local bundle is present; idle during install4j silent stage).
+    (Get-Element 'InstallSnapBtn').Content = 'Working...'
+    # Visible feedback: a determinate bar during download, then indeterminate
+    # marquee during install4j silent execution (install4j has no progress
+    # API). The bar stays visible throughout so the user never sees a
+    # frozen-looking "100%" state.
+    (Get-Element 'SnapProgress').IsIndeterminate = $false
+    (Get-Element 'SnapProgress').Value = 0
     (Get-Element 'SnapProgress').Visibility = 'Visible'
     (Get-Element 'SnapProgressText').Visibility = 'Visible'
     (Get-Element 'SnapProgressText').Text = 'preparing...'
@@ -2195,9 +2205,18 @@ function Set-SetupProgress {
             -ProgressCallback {
                 param($pct)
                 (Get-Element 'SnapProgress').Value = $pct
-                (Get-Element 'SnapProgressText').Text = "downloading $pct%"
+                (Get-Element 'SnapProgressText').Text = "downloading from esa $pct%"
+            } `
+            -InstallStartCallback {
+                # Switch to indeterminate marquee — install4j silent does
+                # not emit progress, but the user must see motion to know
+                # the wizard is still working.
+                (Get-Element 'SnapProgress').IsIndeterminate = $true
+                (Get-Element 'SnapProgressText').Text = 'installing snap (UAC required, ~3-5 min)...'
+                [System.Windows.Forms.Application]::DoEvents()
             } | Out-Null
         Start-Sleep -Seconds 2
+        (Get-Element 'SnapProgress').IsIndeterminate = $false
         $found = Find-Snap
         if ($found) {
             (Get-Element 'SnapPathBox').Text = $found
@@ -2212,6 +2231,7 @@ function Set-SetupProgress {
             [System.Windows.MessageBox]::Show('SNAP installed but gpt.exe not detected. Provide the path manually using Browse.', 'SNAP detection', 'OK', 'Warning') | Out-Null
         }
     } catch {
+        (Get-Element 'SnapProgress').IsIndeterminate = $false
         [System.Windows.MessageBox]::Show("Error during SNAP install:`n$($_.Exception.Message)", 'Error', 'OK', 'Error') | Out-Null
         (Get-Element 'InstallSnapBtn').Content = 'Install SNAP now'
         (Get-Element 'InstallSnapBtn').IsEnabled = $true
