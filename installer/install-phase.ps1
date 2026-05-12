@@ -450,14 +450,38 @@ function Install-PythonPackages {
     }
 }
 
-# Lancia l'installer SNAP bundled e attende che l'utente lo completi.
+# Lancia l'installer SNAP bundled. Prova prima la modalita' silent install4j
+# (-q -overwrite, default install in C:\Program Files\snap, UAC prompt una
+# volta sola). Se il silent fallisce (exit code != 0), fallback al wizard
+# interattivo (~5 minuti, Avanti×3).
+#
+# install4j silent flags utilizzati:
+#   -q          quiet/silent install, usa default per ogni var non specificata
+#   -overwrite  sovrascrive file esistenti senza prompt
+#   -dir        directory di install (omesso: usa il default dello script SNAP)
 function Invoke-SnapInstaller {
-    param([string]$InstallerPath)
+    param(
+        [string]$InstallerPath,
+        [scriptblock]$StatusCallback
+    )
     if (-not (Test-Path $InstallerPath)) {
         throw "Installer SNAP non trovato in: $InstallerPath"
     }
-    # L'installer ESA SNAP non ha modalità completamente silent senza response
-    # file. Lo lanciamo in modalità standard e aspettiamo che l'utente finisca.
+
+    $statusCb = if ($StatusCallback) { $StatusCallback } else { { param($m) Write-Host $m } }
+    & $statusCb 'SNAP install in modalita silent (~3-5 minuti, UAC richiesto)...'
+
+    # Tentativo 1: silent install
+    $proc = Start-Process -FilePath $InstallerPath `
+        -ArgumentList '-q', '-overwrite' `
+        -Wait -PassThru
+    if ($proc.ExitCode -eq 0) {
+        & $statusCb 'SNAP install silent completato (exit 0)'
+        return 0
+    }
+
+    & $statusCb "SNAP silent install ha ritornato exit code $($proc.ExitCode) - rilancio in modalita' interattiva"
+    # Tentativo 2: fallback wizard interattivo (Avanti×3 dell'utente)
     $proc = Start-Process -FilePath $InstallerPath -Wait -PassThru
     return $proc.ExitCode
 }
@@ -1365,9 +1389,9 @@ function Initialize-SnapPage {
         (Get-Element 'SnapStatus').Foreground = '#FFA04000'
         (Get-Element 'SnapPathBox').Text = ''
         $hint = if (Test-Path $Script:BundledSnapPath) {
-            "L'installer SNAP 13.0.0 è bundled in questa distribuzione (~500 MB). Cliccando 'Installa SNAP ora' lo lanciamo: ti chiederà ~5 minuti, clicca Avantix3."
+            "L'installer SNAP 13.0.0 e' bundled in questa distribuzione (~1 GB). Cliccando 'Installa SNAP ora' parte in modalita' silent (no Avanti×N): richiede solo il prompt UAC, ~3-5 minuti totali. Se il silent fallisce, fallback automatico al wizard interattivo."
         } else {
-            "L'installer SNAP non è bundled. Scaricalo da step.esa.int/main/download/snap-download/ e indicane il gpt.exe qui sopra."
+            "L'installer SNAP non e' bundled. Scaricalo da step.esa.int/main/download/snap-download/ e indicane il gpt.exe qui sopra."
         }
         (Get-Element 'SnapInstallText').Text = $hint
         (Get-Element 'SnapInstallHint').Visibility = 'Visible'
@@ -1513,9 +1537,10 @@ function Set-SetupProgress {
 
 (Get-Element 'InstallSnapBtn').Add_Click({
     (Get-Element 'InstallSnapBtn').IsEnabled = $false
-    (Get-Element 'InstallSnapBtn').Content = 'Installazione in corso...'
+    (Get-Element 'InstallSnapBtn').Content = 'Installazione silent in corso (~3-5 min)...'
     try {
-        Invoke-SnapInstaller -InstallerPath $Script:BundledSnapPath | Out-Null
+        Invoke-SnapInstaller -InstallerPath $Script:BundledSnapPath `
+            -StatusCallback { param($m) (Get-Element 'InstallSnapBtn').Content = $m } | Out-Null
         Start-Sleep -Seconds 2
         $found = Find-Snap
         if ($found) {
