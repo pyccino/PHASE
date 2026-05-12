@@ -262,7 +262,7 @@ function Install-GmtSilent {
     $tmpZip = Join-Path $env:TEMP "gmt-portable_$(Get-Random).zip"
     try {
         Get-RemoteFile -Url $Script:GmtZipUrl -OutFile $tmpZip -ProgressCallback $ProgressCallback | Out-Null
-        & $StatusCallback 'Estrazione GMT in corso (~700 MB su disco)...'
+        & $StatusCallback 'Extracting GMT (~700 MB on disk)...'
 
         if (-not (Test-Path $destDir)) {
             New-Item -ItemType Directory -Path $destDir -Force | Out-Null
@@ -272,7 +272,7 @@ function Install-GmtSilent {
         [System.IO.Compression.ZipFile]::ExtractToDirectory($tmpZip, $destDir)
 
         if (-not (Test-Path $gmtExe)) {
-            throw "Estrazione GMT completata ma gmt.exe non trovato in $gmtExe"
+            throw "GMT extraction completed but gmt.exe not found at $gmtExe"
         }
 
         $gmtBin = Split-Path -Parent $gmtExe
@@ -280,7 +280,7 @@ function Install-GmtSilent {
         # Aggiorno anche il PATH della sessione corrente
         $env:Path = "$env:Path;$gmtBin"
 
-        & $StatusCallback "[OK] GMT portable installato: $gmtExe"
+        & $StatusCallback "[OK] GMT portable installed: $gmtExe"
         return $gmtExe
     } finally {
         Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue
@@ -329,7 +329,7 @@ function Install-PortableGit {
     $tmpExe = Join-Path $env:TEMP "PortableGit-installer_$(Get-Random).exe"
     try {
         Get-RemoteFile -Url $Script:GitPortableUrl -OutFile $tmpExe -ProgressCallback $ProgressCallback | Out-Null
-        & $StatusCallback 'Estrazione Portable Git in corso...'
+        & $StatusCallback 'Extracting Portable Git...'
 
         if (-not (Test-Path $destDir)) {
             New-Item -ItemType Directory -Path $destDir -Force | Out-Null
@@ -344,9 +344,9 @@ function Install-PortableGit {
         }
 
         if (-not (Test-Path $gitExe)) {
-            throw "Portable Git estratto ma git.exe non trovato in $gitExe"
+            throw "Portable Git extracted but git.exe not found at $gitExe"
         }
-        & $StatusCallback "[OK] Portable Git installato in $destDir"
+        & $StatusCallback "[OK] Portable Git installed in $destDir"
         return $gitExe
     } finally {
         Remove-Item $tmpExe -Force -ErrorAction SilentlyContinue
@@ -401,7 +401,7 @@ function Install-PythonSilent {
         [Parameter(Mandatory)] [scriptblock]$ProgressCallback,
         [Parameter(Mandatory)] [scriptblock]$StatusCallback
     )
-    & $StatusCallback 'Download in corso...'
+    & $StatusCallback 'Downloading...'
     $tmp = Join-Path $env:TEMP 'phase-python-installer.exe'
     Get-RemoteFile -Url $Script:PythonUrl -OutFile $tmp -ProgressCallback $ProgressCallback | Out-Null
 
@@ -429,11 +429,11 @@ function Install-PythonSilent {
     $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
     $env:Path = "$machinePath;$userPath"
 
-    & $StatusCallback 'Detection post-installazione...'
+    & $StatusCallback 'Post-install detection...'
     Start-Sleep -Seconds 2
     $found = Find-Python
     if (-not $found) {
-        throw "Python installato ma non rilevato sul PATH dopo l'install. Riavvia il wizard."
+        throw "Python installed but not detected on PATH after install. Restart the wizard."
     }
     return $found
 }
@@ -465,7 +465,7 @@ function Invoke-SnapInstaller {
         [scriptblock]$StatusCallback
     )
     if (-not (Test-Path $InstallerPath)) {
-        throw "Installer SNAP non trovato in: $InstallerPath"
+        throw "SNAP installer not found at: $InstallerPath"
     }
 
     $statusCb = if ($StatusCallback) { $StatusCallback } else { { param($m) Write-Host $m } }
@@ -763,7 +763,7 @@ function Invoke-MlappAutoLoadPatch {
         [Parameter(Mandatory)] [scriptblock]$StatusCallback
     )
     if (-not (Test-Path -LiteralPath $MlappPath)) {
-        & $StatusCallback "Mlapp non trovato: $MlappPath (skip)"
+        & $StatusCallback "Mlapp not found: $MlappPath (skipping)"
         return $false
     }
 
@@ -796,7 +796,7 @@ function Invoke-MlappAutoLoadPatch {
         # Anchor: prima occorrenza della stringa anchor
         $idx = $content.IndexOf($Anchor)
         if ($idx -lt 0) {
-            throw "Anchor '$Anchor' non trovato in $docXml"
+            throw "Anchor '$Anchor' not found in $docXml"
         }
         $insertPoint = $idx + $Anchor.Length
 
@@ -901,10 +901,10 @@ function Invoke-StampsInstall {
     )
     $installScript = Join-Path $StampsRoot 'install-windows.ps1'
     if (-not (Test-Path $installScript)) {
-        & $StatusCallback "install-windows.ps1 non trovato in $StampsRoot, skip."
+        & $StatusCallback "install-windows.ps1 not found at $StampsRoot, skipping."
         return $false
     }
-    & $StatusCallback 'StaMPS install-windows.ps1 in corso (build Triangle/snaphu, può richiedere 5-10 minuti)...'
+    & $StatusCallback 'StaMPS install-windows.ps1 running (Triangle/snaphu build, may take 5-10 minutes)...'
     $logFile = Join-Path $env:TEMP 'phase-stamps-install.log'
     $proc = Start-Process -FilePath 'powershell.exe' `
         -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $installScript `
@@ -1207,7 +1207,7 @@ function Invoke-StampsBinariesDownload {
                 <!-- Linea verticale di connessione (hairline) -->
                 <Border Background="#D6DCE8" Width="1" HorizontalAlignment="Left" Margin="13,18,0,12"/>
                 <StackPanel>
-                    <TextBlock Text="INSTALL · PIPELINE" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="9" FontWeight="SemiBold" Foreground="#8C95B8" Margin="0,0,0,18"/>
+                    <TextBlock Text="SETUP · PIPELINE" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="9" FontWeight="SemiBold" Foreground="#8C95B8" Margin="0,0,0,18"/>
 
                     <Grid x:Name="StepRow1" Margin="0,5">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -1232,17 +1232,17 @@ function Invoke-StampsBinariesDownload {
                     <Grid x:Name="StepRow5" Margin="0,5">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Border x:Name="StepDot5" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum5" Text="05" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                        <TextBlock x:Name="StepText5" Grid.Column="1" Text="Destinazione" FontSize="13" VerticalAlignment="Center" Margin="18,0,0,0"/>
+                        <TextBlock x:Name="StepText5" Grid.Column="1" Text="Destination" FontSize="13" VerticalAlignment="Center" Margin="18,0,0,0"/>
                     </Grid>
                     <Grid x:Name="StepRow6" Margin="0,5">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Border x:Name="StepDot6" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum6" Text="06" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                        <TextBlock x:Name="StepText6" Grid.Column="1" Text="Installazione" FontSize="13" VerticalAlignment="Center" Margin="18,0,0,0"/>
+                        <TextBlock x:Name="StepText6" Grid.Column="1" Text="Installation" FontSize="13" VerticalAlignment="Center" Margin="18,0,0,0"/>
                     </Grid>
                     <Grid x:Name="StepRow7" Margin="0,5">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Border x:Name="StepDot7" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum7" Text="07" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                        <TextBlock x:Name="StepText7" Grid.Column="1" Text="Fine" FontSize="13" VerticalAlignment="Center" Margin="18,0,0,0"/>
+                        <TextBlock x:Name="StepText7" Grid.Column="1" Text="Finish" FontSize="13" VerticalAlignment="Center" Margin="18,0,0,0"/>
                     </Grid>
                 </StackPanel>
             </Grid>
@@ -1254,12 +1254,12 @@ function Invoke-StampsBinariesDownload {
                         <TextBlock FontSize="10" Foreground="#4A5168" Margin="0,0,0,4">
                             <Run Text="PERSISTENT  SCATTERER" FontWeight="Bold" Foreground="#0F1430"/>
                         </TextBlock>
-                        <TextBlock Text="Highly Automated Suite for Environmental monitoring" TextWrapping="Wrap" FontSize="10" Foreground="#8C95B8" LineHeight="14"/>
+                        <TextBlock Text="Highly Automated Suite for Environmental Monitoring" TextWrapping="Wrap" FontSize="10" Foreground="#8C95B8" LineHeight="14"/>
                     </StackPanel>
                 </Border>
                 <TextBlock FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="10" Foreground="#8C95B8">
                     <Run Text="build" Foreground="#B0B8C8"/>
-                    <Run Text="  1.8.0  " Foreground="#1A4FE0" FontWeight="SemiBold"/>
+                    <Run Text="  1.9.0  " Foreground="#1A4FE0" FontWeight="SemiBold"/>
                     <Run Text="·  pyccino/PHASE" Foreground="#8C95B8"/>
                 </TextBlock>
             </StackPanel>
@@ -1295,192 +1295,210 @@ function Invoke-StampsBinariesDownload {
 
             <!-- Page 1: Welcome -->
             <StackPanel x:Name="Page1_Welcome" Visibility="Visible">
-                <TextBlock Text="PHASE Windows Installer" FontSize="26" FontWeight="Light" Margin="0,0,0,8"/>
-                <TextBlock Text="Installazione end-to-end della suite PHASE (Persistent scatterer Highly Automated Suite for Environmental monitoring) e di tutte le sue dipendenze su Windows."
-                           TextWrapping="Wrap" FontSize="13" Foreground="#FF606060" Margin="0,0,0,20"/>
-                <Border BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4" Padding="16" Background="White">
+                <TextBlock Text="PHASE Windows Installer" FontSize="28" FontWeight="Light" Margin="0,0,0,10"/>
+                <TextBlock Text="End-to-end installation of the PHASE suite (Persistent scatterer Highly Automated Suite for Environmental monitoring) and all its dependencies on Windows."
+                           TextWrapping="Wrap" FontSize="13" Foreground="#4A5168" Margin="0,0,0,24"/>
+                <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock Text="Questo wizard farà:" FontWeight="Semibold" Margin="0,0,0,10"/>
-                        <TextBlock Text="1. Verifica MATLAB (deve essere già installato e attivato)" Margin="0,3"/>
-                        <TextBlock Text="2. Verifica SNAP 13 (installa quello bundled se assente)" Margin="0,3"/>
-                        <TextBlock Text="3. Installa Python 3.11+ silent se assente" Margin="0,3"/>
-                        <TextBlock Text="4. Clona PHASE, StaMPS, TRAIN nella cartella scelta" Margin="0,3"/>
-                        <TextBlock Text="5. Builda Triangle/snaphu e configura tutti i path" Margin="0,3"/>
+                        <TextBlock Text="What this wizard does" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,14"/>
+                        <TextBlock Text="1.  Detect MATLAB (must be installed and activated)" Margin="0,4"/>
+                        <TextBlock Text="2.  Detect SNAP 13 (installs the bundled installer if missing)" Margin="0,4"/>
+                        <TextBlock Text="3.  Install Python 3.11+ silently if missing" Margin="0,4"/>
+                        <TextBlock Text="4.  Clone PHASE, StaMPS, TRAIN into the chosen folder" Margin="0,4"/>
+                        <TextBlock Text="5.  Download native binaries, install GMT, configure all paths" Margin="0,4"/>
                     </StackPanel>
                 </Border>
-                <TextBlock Text="Tempo stimato: 15-30 minuti (dipende dalla connessione e dall'installer SNAP)."
-                           Margin="0,16,0,0" FontStyle="Italic" Foreground="#FF606060"/>
+                <TextBlock Text="Estimated time: 15-30 minutes (depending on connection and SNAP installer)."
+                           Margin="0,18,0,0" FontStyle="Italic" Foreground="#8C95B8" FontSize="12"/>
             </StackPanel>
 
             <!-- Page 2: MATLAB -->
             <StackPanel x:Name="Page2_Matlab" Visibility="Collapsed">
-                <TextBlock Text="MATLAB" FontSize="24" FontWeight="Light" Margin="0,0,0,8"/>
-                <TextBlock Text="MATLAB è richiesto da PHASE (R2023a o successivo). L'installer non può installarlo automaticamente perché è proprietario - deve essere già installato e attivato sul sistema."
-                           TextWrapping="Wrap" FontSize="13" Foreground="#FF606060" Margin="0,0,0,20"/>
+                <TextBlock Text="MATLAB" FontSize="28" FontWeight="Light" Margin="0,0,0,10"/>
+                <TextBlock Text="PHASE requires MATLAB R2023a or newer. The installer cannot install MATLAB automatically because it is proprietary — it must already be installed and activated on this system."
+                           TextWrapping="Wrap" FontSize="13" Foreground="#4A5168" Margin="0,0,0,20"/>
 
-                <TextBlock x:Name="MatlabStatus" Text="" FontWeight="Semibold" Margin="0,0,0,8"/>
+                <TextBlock x:Name="MatlabStatus" Text="" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
-                <TextBlock Text="Path a matlab.exe:" Margin="0,0,0,4"/>
+                <TextBlock Text="Path to matlab.exe" Margin="0,0,0,6" FontSize="11" Foreground="#8C95B8" FontFamily="JetBrains Mono, Cascadia Code, Consolas"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="MatlabPathBox" Grid.Column="0"/>
-                    <Button x:Name="MatlabBrowseBtn" Grid.Column="1" Content="Sfoglia..." Margin="6,0,0,0"/>
+                    <Button x:Name="MatlabBrowseBtn" Grid.Column="1" Content="Browse" Margin="8,0,0,0"/>
                 </Grid>
 
-                <TextBlock x:Name="MatlabHint" Text="" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="#FF606060" FontSize="12"/>
+                <TextBlock x:Name="MatlabHint" Text="" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="#8C95B8" FontSize="12"/>
 
-                <Border x:Name="MatlabDownloadHint" BorderBrush="#FFE08040" BorderThickness="1" CornerRadius="4"
-                        Padding="12" Background="#FFFFF6E8" Margin="0,16,0,0" Visibility="Collapsed">
+                <Border x:Name="MatlabDownloadHint" BorderBrush="#F0C492" BorderThickness="1" CornerRadius="4"
+                        Padding="14,12" Background="#FFFBF1" Margin="0,16,0,0" Visibility="Collapsed">
                     <StackPanel>
-                        <TextBlock Text="MATLAB non trovato sul sistema." FontWeight="Semibold" Foreground="#FFA04000"/>
-                        <TextBlock Text="Scaricalo e installalo da mathworks.com, poi torna qui e indica il path manualmente."
-                                   TextWrapping="Wrap" Margin="0,4,0,8"/>
-                        <Button x:Name="OpenMathworksBtn" Content="Apri mathworks.com" HorizontalAlignment="Left"/>
+                        <TextBlock Text="MATLAB not found on this system." FontWeight="SemiBold" Foreground="#A55B00"/>
+                        <TextBlock Text="Download and install it from mathworks.com, then come back and provide the path manually."
+                                   TextWrapping="Wrap" Margin="0,4,0,10" Foreground="#4A5168"/>
+                        <Button x:Name="OpenMathworksBtn" Content="Open mathworks.com" HorizontalAlignment="Left"/>
                     </StackPanel>
                 </Border>
 
-                <Border x:Name="MatlabToolboxStatus" BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4"
-                        Padding="12" Background="White" Margin="0,16,0,0" Visibility="Collapsed">
+                <Border x:Name="MatlabToolboxStatus" Style="{StaticResource Card}" Margin="0,16,0,0" Visibility="Collapsed">
                     <StackPanel>
-                        <TextBlock x:Name="MatlabToolboxHeader" Text="Toolbox MATLAB" FontWeight="Semibold" Margin="0,0,0,6"/>
-                        <TextBlock x:Name="MatlabToolboxList" Text="" TextWrapping="Wrap" FontSize="12"/>
+                        <TextBlock x:Name="MatlabToolboxHeader" Text="MATLAB toolboxes" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="MatlabToolboxList" Text="" TextWrapping="Wrap" FontSize="12" FontFamily="JetBrains Mono, Cascadia Code, Consolas" LineHeight="20"/>
                         <TextBlock x:Name="MatlabToolboxHint" Text="" TextWrapping="Wrap" FontSize="11"
-                                   Foreground="#FF606060" Margin="0,8,0,0" Visibility="Collapsed"/>
+                                   Foreground="#8C95B8" Margin="0,10,0,0" Visibility="Collapsed"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
 
             <!-- Page 3: SNAP -->
             <StackPanel x:Name="Page3_Snap" Visibility="Collapsed">
-                <TextBlock Text="SNAP" FontSize="24" FontWeight="Light" Margin="0,0,0,8"/>
-                <TextBlock Text="SNAP (Sentinel Application Platform di ESA) è richiesto per il preprocessing degli SLC. Versione 13.x raccomandata."
-                           TextWrapping="Wrap" FontSize="13" Foreground="#FF606060" Margin="0,0,0,20"/>
+                <TextBlock Text="SNAP" FontSize="28" FontWeight="Light" Margin="0,0,0,10"/>
+                <TextBlock Text="ESA's Sentinel Application Platform (SNAP) is required for SLC preprocessing. Version 13.x is recommended."
+                           TextWrapping="Wrap" FontSize="13" Foreground="#4A5168" Margin="0,0,0,20"/>
 
-                <TextBlock x:Name="SnapStatus" Text="" FontWeight="Semibold" Margin="0,0,0,8"/>
+                <TextBlock x:Name="SnapStatus" Text="" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
-                <TextBlock Text="Path a gpt.exe:" Margin="0,0,0,4"/>
+                <TextBlock Text="Path to gpt.exe" Margin="0,0,0,6" FontSize="11" Foreground="#8C95B8" FontFamily="JetBrains Mono, Cascadia Code, Consolas"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="SnapPathBox" Grid.Column="0"/>
-                    <Button x:Name="SnapBrowseBtn" Grid.Column="1" Content="Sfoglia..." Margin="6,0,0,0"/>
+                    <Button x:Name="SnapBrowseBtn" Grid.Column="1" Content="Browse" Margin="8,0,0,0"/>
                 </Grid>
 
-                <Border x:Name="SnapInstallHint" BorderBrush="#FFE08040" BorderThickness="1" CornerRadius="4"
-                        Padding="12" Background="#FFFFF6E8" Margin="0,16,0,0" Visibility="Collapsed">
+                <Border x:Name="SnapInstallHint" BorderBrush="#F0C492" BorderThickness="1" CornerRadius="4"
+                        Padding="14,12" Background="#FFFBF1" Margin="0,16,0,0" Visibility="Collapsed">
                     <StackPanel>
-                        <TextBlock Text="SNAP non trovato sul sistema." FontWeight="Semibold" Foreground="#FFA04000"/>
-                        <TextBlock x:Name="SnapInstallText" Text="" TextWrapping="Wrap" Margin="0,4,0,8"/>
-                        <Button x:Name="InstallSnapBtn" Content="Installa SNAP ora" HorizontalAlignment="Left"/>
+                        <TextBlock Text="SNAP not found on this system." FontWeight="SemiBold" Foreground="#A55B00"/>
+                        <TextBlock x:Name="SnapInstallText" Text="" TextWrapping="Wrap" Margin="0,4,0,10" Foreground="#4A5168"/>
+                        <Button x:Name="InstallSnapBtn" Content="Install SNAP now" HorizontalAlignment="Left"/>
                     </StackPanel>
                 </Border>
 
-                <TextBlock x:Name="SnapHint" Text="" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="#FF606060" FontSize="12"/>
+                <TextBlock x:Name="SnapHint" Text="" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="#8C95B8" FontSize="12"/>
             </StackPanel>
 
             <!-- Page 4: Python -->
             <StackPanel x:Name="Page4_Python" Visibility="Collapsed">
-                <TextBlock Text="Python" FontSize="24" FontWeight="Light" Margin="0,0,0,8"/>
-                <TextBlock Text="PHASE richiede Python 3.11 o successivo, con la libreria openpyxl. L'installer può scaricarlo e installarlo automaticamente."
-                           TextWrapping="Wrap" FontSize="13" Foreground="#FF606060" Margin="0,0,0,20"/>
+                <TextBlock Text="Python" FontSize="28" FontWeight="Light" Margin="0,0,0,10"/>
+                <TextBlock Text="PHASE requires Python 3.11 or newer with the openpyxl library. The installer can download and install it automatically."
+                           TextWrapping="Wrap" FontSize="13" Foreground="#4A5168" Margin="0,0,0,20"/>
 
-                <TextBlock x:Name="PythonStatus" Text="" FontWeight="Semibold" Margin="0,0,0,12"/>
-                <TextBlock x:Name="PythonPath" Text="" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <TextBlock x:Name="PythonStatus" Text="" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                <TextBlock x:Name="PythonPath" Text="" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12" Foreground="#4A5168"/>
 
-                <Border x:Name="PythonInstallPanel" BorderBrush="#FFE08040" BorderThickness="1" CornerRadius="4"
-                        Padding="12" Background="#FFFFF6E8" Margin="0,8,0,0" Visibility="Collapsed">
+                <Border x:Name="PythonInstallPanel" BorderBrush="#F0C492" BorderThickness="1" CornerRadius="4"
+                        Padding="14,12" Background="#FFFBF1" Margin="0,8,0,0" Visibility="Collapsed">
                     <StackPanel>
-                        <TextBlock Text="Python 3.11+ non rilevato (o trovato solo lo stub Microsoft Store)." FontWeight="Semibold" Foreground="#FFA04000"/>
-                        <TextBlock Text="Verrà scaricato da python.org e installato silenziosamente per l'utente corrente (~28 MB)."
-                                   TextWrapping="Wrap" Margin="0,4,0,8"/>
-                        <Button x:Name="InstallPythonBtn" Content="Installa Python 3.11.9 ora" HorizontalAlignment="Left"/>
-                        <ProgressBar x:Name="PythonProgress" Height="16" Margin="0,12,0,4" Visibility="Collapsed" Maximum="100"/>
-                        <TextBlock x:Name="PythonProgressText" Text="" FontSize="11" Foreground="#FF606060" Visibility="Collapsed"/>
+                        <TextBlock Text="Python 3.11+ not detected (or only the Microsoft Store stub was found)." FontWeight="SemiBold" Foreground="#A55B00"/>
+                        <TextBlock Text="It will be downloaded from python.org and installed silently for the current user (~28 MB)."
+                                   TextWrapping="Wrap" Margin="0,4,0,10" Foreground="#4A5168"/>
+                        <Button x:Name="InstallPythonBtn" Content="Install Python 3.11.9 now" HorizontalAlignment="Left"/>
+                        <ProgressBar x:Name="PythonProgress" Height="6" Margin="0,14,0,4" Visibility="Collapsed" Maximum="100" Background="#E4E8F0" Foreground="#1A4FE0" BorderThickness="0"/>
+                        <TextBlock x:Name="PythonProgressText" Text="" FontSize="11" Foreground="#4A5168" FontFamily="JetBrains Mono, Cascadia Code, Consolas" Visibility="Collapsed"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
 
             <!-- Page 5: Destination folder -->
             <StackPanel x:Name="Page5_Dest" Visibility="Collapsed">
-                <TextBlock Text="Cartella di destinazione" FontSize="24" FontWeight="Light" Margin="0,0,0,8"/>
-                <TextBlock Text="Scegli dove installare PHASE. Verranno create 3 sotto-cartelle: PHASE\, StaMPS\, TRAIN\."
-                           TextWrapping="Wrap" FontSize="13" Foreground="#FF606060" Margin="0,0,0,20"/>
+                <TextBlock Text="Destination folder" FontSize="28" FontWeight="Light" Margin="0,0,0,10"/>
+                <TextBlock Text="Choose where PHASE will be installed. Three subfolders will be created: PHASE\, StaMPS\, TRAIN\."
+                           TextWrapping="Wrap" FontSize="13" Foreground="#4A5168" Margin="0,0,0,20"/>
 
-                <TextBlock Text="Cartella:" Margin="0,0,0,4"/>
+                <TextBlock Text="Folder" Margin="0,0,0,6" FontSize="11" Foreground="#8C95B8" FontFamily="JetBrains Mono, Cascadia Code, Consolas"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="DestPathBox" Grid.Column="0"/>
-                    <Button x:Name="DestBrowseBtn" Grid.Column="1" Content="Sfoglia..." Margin="6,0,0,0"/>
+                    <Button x:Name="DestBrowseBtn" Grid.Column="1" Content="Browse" Margin="8,0,0,0"/>
                 </Grid>
 
-                <TextBlock x:Name="DestHint" Text="" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="#FF606060" FontSize="12"/>
+                <TextBlock x:Name="DestHint" Text="" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="#8C95B8" FontSize="12"/>
 
-                <Border BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4"
-                        Padding="12" Background="White" Margin="0,16,0,0">
+                <Border Style="{StaticResource Card}" Margin="0,18,0,0">
                     <StackPanel>
-                        <TextBlock Text="Suggerimenti:" FontWeight="Semibold" Margin="0,0,0,6"/>
-                        <TextBlock Text="• Path corti (vicini al root del drive) evitano problemi con MAX_PATH=260 nei PATCH_N/ di StaMPS." Margin="0,2"/>
-                        <TextBlock Text="• Evita cartelle sotto OneDrive (file lock intermittenti durante i run lunghi)." Margin="0,2"/>
-                        <TextBlock Text="• Solo caratteri ASCII (no accenti, spazi OK)." Margin="0,2"/>
+                        <TextBlock Text="Recommendations" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="·  Short paths (near drive root) avoid the MAX_PATH=260 limit on StaMPS PATCH_N/ directories." Margin="0,3" Foreground="#4A5168" TextWrapping="Wrap"/>
+                        <TextBlock Text="·  Avoid folders inside OneDrive (intermittent file locks during long runs)." Margin="0,3" Foreground="#4A5168" TextWrapping="Wrap"/>
+                        <TextBlock Text="·  ASCII characters only (no accents, spaces are fine)." Margin="0,3" Foreground="#4A5168" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
 
-            <!-- Page 6: Clone & Setup -->
+            <!-- Page 6: Installation — task list view (replaces console log) -->
             <StackPanel x:Name="Page6_Setup" Visibility="Collapsed">
-                <Grid Margin="0,0,0,12">
+                <Grid Margin="0,0,0,14">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Installazione" FontSize="24" FontWeight="Light" Margin="0,0,0,4"/>
-                        <TextBlock x:Name="SetupSubtitle" Text="Pronto a procedere. Premi 'Avvia' per iniziare."
-                                   TextWrapping="Wrap" FontSize="13" Foreground="#FF606060"/>
+                        <TextBlock Text="Installation" FontSize="28" FontWeight="Light" Margin="0,0,0,4"/>
+                        <TextBlock x:Name="SetupSubtitle" Text="Ready to install. Click Start to begin."
+                                   TextWrapping="Wrap" FontSize="13" Foreground="#4A5168"/>
                     </StackPanel>
-                    <Button x:Name="StartSetupBtn" Grid.Column="1" Content="Avvia installazione"
-                            VerticalAlignment="Center" Padding="20,10" FontWeight="Semibold"/>
+                    <Button x:Name="StartSetupBtn" Grid.Column="1" Content="Start installation"
+                            Style="{StaticResource PrimaryButton}" VerticalAlignment="Center"/>
                 </Grid>
 
-                <ScrollViewer x:Name="SetupLogScroll" Height="320" BorderBrush="#FFE0E0E0" BorderThickness="1"
-                              Background="#FF1E1E1E" VerticalScrollBarVisibility="Auto">
-                    <TextBlock x:Name="SetupLog" FontFamily="Consolas" FontSize="11" Foreground="#FFE0E0E0"
-                               Padding="10" TextWrapping="Wrap"/>
-                </ScrollViewer>
+                <!-- Task list (replaces the old dark console log) -->
+                <Border Style="{StaticResource Card}" Padding="22,18">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Pipeline" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="10" FontWeight="SemiBold" Foreground="#1A4FE0"/>
+                            <TextBlock Grid.Column="1" x:Name="TaskCounter" Text="0 / 10" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="10" Foreground="#8C95B8"/>
+                        </Grid>
 
-                <ProgressBar x:Name="SetupProgress" Height="20" Margin="0,12,0,0" Maximum="100"/>
-                <TextBlock x:Name="SetupProgressText" Text="" Margin="0,4,0,0" Foreground="#FF606060" FontSize="12"/>
+                        <ScrollViewer x:Name="TaskListScroll" Height="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="TaskList"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <!-- Bottom progress bar — slim, like loaders in modern devtools -->
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ProgressBar x:Name="SetupProgress" Height="4" Maximum="100"
+                                 Background="#E4E8F0" Foreground="#1A4FE0" BorderThickness="0" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" x:Name="SetupProgressText" Text="" Margin="14,0,0,0"
+                               Foreground="#4A5168" FontSize="11" FontFamily="JetBrains Mono, Cascadia Code, Consolas" VerticalAlignment="Center"/>
+                </Grid>
             </StackPanel>
 
             <!-- Page 7: Finish -->
             <StackPanel x:Name="Page7_Finish" Visibility="Collapsed">
-                <TextBlock Text="Installazione completata" FontSize="24" FontWeight="Light" Foreground="#FF008000" Margin="0,0,0,8"/>
-                <TextBlock x:Name="FinishSubtitle" Text="PHASE è pronto. Apri la cartella e fai doppio click su uno dei tre .mlapp."
-                           TextWrapping="Wrap" FontSize="13" Foreground="#FF606060" Margin="0,0,0,20"/>
+                <TextBlock Text="Installation complete" FontSize="28" FontWeight="Light" Foreground="#2DBA6E" Margin="0,0,0,10"/>
+                <TextBlock x:Name="FinishSubtitle" Text="PHASE is ready. Open the folder and double-click one of the three .mlapp files."
+                           TextWrapping="Wrap" FontSize="13" Foreground="#4A5168" Margin="0,0,0,22"/>
 
-                <Border BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4"
-                        Padding="16" Background="White">
+                <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock Text="Cartella PHASE:" FontWeight="Semibold"/>
-                        <TextBlock x:Name="FinishPath" Text="" FontFamily="Consolas" FontSize="12" Margin="0,4,0,12"/>
-                        <TextBlock Text="App MATLAB disponibili:" FontWeight="Semibold" Margin="0,8,0,4"/>
-                        <TextBlock Text="• PHASE_Preprocessing.mlapp - modulo 1 (preprocessing SNAP)" Margin="0,2"/>
-                        <TextBlock Text="• PHASE_Preprocessing\PHASE_StaMPS.mlapp - modulo 2 (PSI StaMPS)" Margin="0,2"/>
-                        <TextBlock Text="• PHASE_model.mlapp - modulo 3 (analisi geospaziale)" Margin="0,2"/>
+                        <TextBlock Text="PHASE folder" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="10" FontWeight="SemiBold" Foreground="#1A4FE0" Margin="0,0,0,4"/>
+                        <TextBlock x:Name="FinishPath" Text="" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="12" Margin="0,0,0,18" Foreground="#0F1430"/>
+                        <TextBlock Text="Available MATLAB apps" FontFamily="JetBrains Mono, Cascadia Code, Consolas" FontSize="10" FontWeight="SemiBold" Foreground="#1A4FE0" Margin="0,0,0,8"/>
+                        <TextBlock Text="·  PHASE_Preprocessing.mlapp  —  module 1 (SNAP preprocessing)" Margin="0,3" Foreground="#4A5168"/>
+                        <TextBlock Text="·  PHASE_Preprocessing\PHASE_StaMPS.mlapp  —  module 2 (PSI StaMPS)" Margin="0,3" Foreground="#4A5168"/>
+                        <TextBlock Text="·  PHASE_model.mlapp  —  module 3 (geospatial analysis)" Margin="0,3" Foreground="#4A5168"/>
                     </StackPanel>
                 </Border>
 
-                <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
-                    <Button x:Name="OpenFolderBtn" Content="Apri cartella PHASE"/>
-                    <Button x:Name="OpenLogBtn" Content="Apri log installazione"/>
+                <StackPanel Orientation="Horizontal" Margin="0,22,0,0">
+                    <Button x:Name="OpenFolderBtn" Content="Open PHASE folder"/>
+                    <Button x:Name="OpenLogBtn" Content="Open install log"/>
                 </StackPanel>
             </StackPanel>
 
@@ -1489,9 +1507,9 @@ function Invoke-StampsBinariesDownload {
             <!-- Footer with Back/Next/Cancel — light, hairline divider -->
             <Border Grid.Row="2" Background="#FCFCFE" BorderBrush="#E4E8F0" BorderThickness="0,1,0,0" Padding="40,18">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button x:Name="BackBtn" Content="Indietro" Style="{StaticResource SecondaryButton}"/>
-                    <Button x:Name="NextBtn" Content="Avanti" Style="{StaticResource PrimaryButton}"/>
-                    <Button x:Name="CancelBtn" Content="Annulla" Style="{StaticResource SecondaryButton}"/>
+                    <Button x:Name="BackBtn" Content="Back" Style="{StaticResource SecondaryButton}"/>
+                    <Button x:Name="NextBtn" Content="Next" Style="{StaticResource PrimaryButton}"/>
+                    <Button x:Name="CancelBtn" Content="Cancel" Style="{StaticResource SecondaryButton}"/>
                 </StackPanel>
             </Border>
         </Grid>
@@ -1554,9 +1572,9 @@ $labels = @{
     2 = 'STEP 2  ·  MATLAB'
     3 = 'STEP 3  ·  SNAP'
     4 = 'STEP 4  ·  PYTHON'
-    5 = 'STEP 5  ·  CARTELLA DESTINAZIONE'
-    6 = 'STEP 6  ·  INSTALLAZIONE'
-    7 = 'STEP 7  ·  FINE'
+    5 = 'STEP 5  ·  DESTINATION'
+    6 = 'STEP 6  ·  INSTALLATION'
+    7 = 'STEP 7  ·  FINISH'
 }
 
 $Script:CurrentPage = 1
@@ -1639,10 +1657,10 @@ function Show-Page {
     Update-StepIndicator -Current $N
     (Get-Element 'BackBtn').IsEnabled = ($N -gt 1 -and $N -lt 7)
     (Get-Element 'NextBtn').IsEnabled = ($N -lt 6)
-    (Get-Element 'NextBtn').Content = if ($N -eq 5) { 'Procedi' } else { 'Avanti' }
+    (Get-Element 'NextBtn').Content = if ($N -eq 5) { 'Continue' } else { 'Next' }
     if ($N -eq 7) {
         (Get-Element 'NextBtn').Visibility = 'Collapsed'
-        (Get-Element 'CancelBtn').Content = 'Chiudi'
+        (Get-Element 'CancelBtn').Content = 'Close'
     }
     $Script:CurrentPage = $N
 
@@ -1660,14 +1678,14 @@ function Show-Page {
 function Initialize-MatlabPage {
     $found = Find-Matlab
     if ($found) {
-        (Get-Element 'MatlabStatus').Text = "[OK] MATLAB rilevato automaticamente."
+        (Get-Element 'MatlabStatus').Text = "[OK] MATLAB detected automatically."
         (Get-Element 'MatlabStatus').Foreground = '#FF008000'
         (Get-Element 'MatlabPathBox').Text = $found
         (Get-Element 'MatlabDownloadHint').Visibility = 'Collapsed'
-        (Get-Element 'MatlabHint').Text = "Path rilevato automaticamente. Puoi modificarlo se vuoi puntare a una versione diversa."
+        (Get-Element 'MatlabHint').Text = "Path detected automatically. You can override it to target a different MATLAB install."
         Update-MatlabToolboxStatus -MatlabExe $found
     } else {
-        (Get-Element 'MatlabStatus').Text = "[X] MATLAB non trovato sul sistema."
+        (Get-Element 'MatlabStatus').Text = "[X] MATLAB not found on system."
         (Get-Element 'MatlabStatus').Foreground = '#FFA04000'
         (Get-Element 'MatlabPathBox').Text = ''
         (Get-Element 'MatlabDownloadHint').Visibility = 'Visible'
@@ -1735,13 +1753,13 @@ function Update-MatlabValidation {
 function Initialize-SnapPage {
     $found = Find-Snap
     if ($found) {
-        (Get-Element 'SnapStatus').Text = "[OK] SNAP rilevato automaticamente."
+        (Get-Element 'SnapStatus').Text = "[OK] SNAP detected automatically."
         (Get-Element 'SnapStatus').Foreground = '#FF008000'
         (Get-Element 'SnapPathBox').Text = $found
         (Get-Element 'SnapInstallHint').Visibility = 'Collapsed'
-        (Get-Element 'SnapHint').Text = "Path rilevato automaticamente. Modificalo per puntare a una install diversa."
+        (Get-Element 'SnapHint').Text = "Path detected automatically. Override it to point at a different install."
     } else {
-        (Get-Element 'SnapStatus').Text = "[X] SNAP non trovato sul sistema."
+        (Get-Element 'SnapStatus').Text = "[X] SNAP not found on system."
         (Get-Element 'SnapStatus').Foreground = '#FFA04000'
         (Get-Element 'SnapPathBox').Text = ''
         $hint = if (Test-Path $Script:BundledSnapPath) {
@@ -1766,7 +1784,7 @@ function Update-SnapValidation {
 function Initialize-PythonPage {
     $found = Find-Python
     if ($found) {
-        (Get-Element 'PythonStatus').Text = "[OK] Python $($found.Version) rilevato."
+        (Get-Element 'PythonStatus').Text = "[OK] Python $($found.Version) detected."
         (Get-Element 'PythonStatus').Foreground = '#FF008000'
         (Get-Element 'PythonPath').Text = $found.Exe
         (Get-Element 'PythonInstallPanel').Visibility = 'Collapsed'
@@ -1774,7 +1792,7 @@ function Initialize-PythonPage {
         $Script:State.PythonVersion = $found.Version
         (Get-Element 'NextBtn').IsEnabled = $true
     } else {
-        (Get-Element 'PythonStatus').Text = "[X] Python 3.11+ non rilevato."
+        (Get-Element 'PythonStatus').Text = "[X] Python 3.11+ not detected."
         (Get-Element 'PythonStatus').Foreground = '#FFA04000'
         (Get-Element 'PythonPath').Text = ''
         (Get-Element 'PythonInstallPanel').Visibility = 'Visible'
@@ -1814,41 +1832,268 @@ function Update-DestValidation {
     if ($valid) { $Script:State.InstallDir = $path }
 }
 
+# Definition of the 10 pipeline tasks shown in the Step 6 task list.
+# These are visual checkpoints — they roughly mirror Invoke-FullSetup
+# stages but their granularity is presentational, not 1:1 with code.
+$Script:PipelineTasks = @(
+    @{ Key = 'git';         Label = 'Verify Git installation' }
+    @{ Key = 'clone-phase'; Label = 'Clone PHASE repository' }
+    @{ Key = 'clone-stamps'; Label = 'Clone StaMPS repository' }
+    @{ Key = 'clone-train'; Label = 'Clone TRAIN repository' }
+    @{ Key = 'stamps-build'; Label = 'Build StaMPS auxiliary tools' }
+    @{ Key = 'stamps-bin';  Label = 'Download native StaMPS binaries' }
+    @{ Key = 'gmt';         Label = 'Install GMT (portable)' }
+    @{ Key = 'env';         Label = 'Configure environment variables' }
+    @{ Key = 'matlab';      Label = 'MATLAB savepath + precompile .mat files' }
+    @{ Key = 'patch';       Label = 'Patch .mlapp files for auto-load' }
+)
+
+# Tracks the start time of each running task so we can report elapsed time
+$Script:TaskTimers = @{}
+
 function Initialize-SetupPage {
-    (Get-Element 'SetupLog').Text = ''
+    Reset-TaskList
     (Get-Element 'SetupProgress').Value = 0
-    (Get-Element 'SetupProgressText').Text = ''
+    (Get-Element 'SetupProgressText').Text = 'idle'
     (Get-Element 'BackBtn').IsEnabled = $false
     (Get-Element 'NextBtn').IsEnabled = $false
     (Get-Element 'StartSetupBtn').IsEnabled = $true
+    (Get-Element 'TaskCounter').Text = ("0 / {0}" -f $Script:PipelineTasks.Count)
 }
 
 function Initialize-FinishPage {
-    (Get-Element 'FinishPath').Text = $Script:State.InstallDir
+    (Get-Element 'FinishPath').Text = (Join-Path $Script:State.InstallDir 'PHASE')
     (Get-Element 'BackBtn').IsEnabled = $false
-    # Riabilita Chiudi: era stato disabilitato dal click di StartSetupBtn
-    # per evitare cancellazioni durante l'install. In pagina 7 di Fine
-    # l'utente DEVE poter chiudere il wizard.
     (Get-Element 'CancelBtn').IsEnabled = $true
-    (Get-Element 'CancelBtn').Content = 'Chiudi'
+    (Get-Element 'CancelBtn').Content = 'Close'
 }
 
-function Add-SetupLog {
-    param([string]$Message, [string]$Color = '#FFE0E0E0')
-    $log = Get-Element 'SetupLog'
-    $stamp = (Get-Date -Format 'HH:mm:ss')
-    $line = "[$stamp] $Message`n"
-    $log.Text += $line
-    Add-Content -Path $Script:SetupLogPath -Value "[$stamp] $Message"
-    $scroll = Get-Element 'SetupLogScroll'
-    $scroll.ScrollToEnd()
+# Rebuilds the task list panel from scratch (used on page enter).
+# Each task is rendered as a 3-column row: status icon | label+detail | duration.
+function Reset-TaskList {
+    $panel = Get-Element 'TaskList'
+    $panel.Children.Clear()
+    $Script:TaskNodes = @{}
+    $Script:TaskTimers = @{}
+
+    foreach ($task in $Script:PipelineTasks) {
+        $row = New-Object System.Windows.Controls.Grid
+        $row.Margin = '0,5'
+        $col1 = New-Object System.Windows.Controls.ColumnDefinition; $col1.Width = 'Auto'
+        $col2 = New-Object System.Windows.Controls.ColumnDefinition; $col2.Width = '*'
+        $col3 = New-Object System.Windows.Controls.ColumnDefinition; $col3.Width = 'Auto'
+        [void]$row.ColumnDefinitions.Add($col1)
+        [void]$row.ColumnDefinitions.Add($col2)
+        [void]$row.ColumnDefinitions.Add($col3)
+
+        # Status pill: a 18 px circle Border with a TextBlock glyph inside
+        $dot = New-Object System.Windows.Controls.Border
+        $dot.Width = 18; $dot.Height = 18
+        $dot.CornerRadius = New-Object System.Windows.CornerRadius 9
+        $dot.Background = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#FFFFFFFF'))
+        $dot.BorderBrush = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#FFD6DCE8'))
+        $dot.BorderThickness = New-Object System.Windows.Thickness 1
+        $dot.VerticalAlignment = 'Center'
+        [System.Windows.Controls.Grid]::SetColumn($dot, 0)
+
+        $glyph = New-Object System.Windows.Controls.TextBlock
+        $glyph.Text = ''
+        $glyph.HorizontalAlignment = 'Center'
+        $glyph.VerticalAlignment = 'Center'
+        $glyph.FontSize = 10
+        $glyph.FontWeight = 'Bold'
+        $glyph.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#FF8C95B8'))
+        $dot.Child = $glyph
+
+        # Center column: label + detail (stacked)
+        $textCol = New-Object System.Windows.Controls.StackPanel
+        $textCol.Margin = '14,0,12,0'
+        $textCol.VerticalAlignment = 'Center'
+        [System.Windows.Controls.Grid]::SetColumn($textCol, 1)
+
+        $label = New-Object System.Windows.Controls.TextBlock
+        $label.Text = $task.Label
+        $label.FontSize = 13
+        $label.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#FF8C95B8'))
+        [void]$textCol.Children.Add($label)
+
+        $detail = New-Object System.Windows.Controls.TextBlock
+        $detail.Text = ''
+        $detail.FontFamily = New-Object System.Windows.Media.FontFamily 'JetBrains Mono, Cascadia Code, Consolas'
+        $detail.FontSize = 10
+        $detail.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#FF8C95B8'))
+        $detail.Margin = '0,2,0,0'
+        $detail.Visibility = 'Collapsed'
+        $detail.TextTrimming = 'CharacterEllipsis'
+        [void]$textCol.Children.Add($detail)
+
+        # Right column: duration display (mono)
+        $duration = New-Object System.Windows.Controls.TextBlock
+        $duration.Text = ''
+        $duration.FontFamily = New-Object System.Windows.Media.FontFamily 'JetBrains Mono, Cascadia Code, Consolas'
+        $duration.FontSize = 10
+        $duration.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#FFB0B8C8'))
+        $duration.VerticalAlignment = 'Center'
+        [System.Windows.Controls.Grid]::SetColumn($duration, 2)
+
+        [void]$row.Children.Add($dot)
+        [void]$row.Children.Add($textCol)
+        [void]$row.Children.Add($duration)
+
+        [void]$panel.Children.Add($row)
+
+        $Script:TaskNodes[$task.Key] = @{
+            Row = $row; Dot = $dot; Glyph = $glyph;
+            Label = $label; Detail = $detail; Duration = $duration
+        }
+    }
+}
+
+# Update a single task's visual state. Status: 'pending' | 'running' | 'done' | 'skip' | 'error'.
+function Update-Task {
+    param(
+        [Parameter(Mandatory)] [string]$Key,
+        [Parameter(Mandatory)] [ValidateSet('pending','running','done','skip','error')] [string]$Status,
+        [string]$Detail
+    )
+    $node = $Script:TaskNodes[$Key]
+    if (-not $node) { return }
+
+    $ink   = [System.Windows.Media.ColorConverter]::ConvertFromString('#FF0F1430')
+    $blue  = [System.Windows.Media.ColorConverter]::ConvertFromString('#FF1A4FE0')
+    $green = [System.Windows.Media.ColorConverter]::ConvertFromString('#FF2DBA6E')
+    $red   = [System.Windows.Media.ColorConverter]::ConvertFromString('#FFE03B5C')
+    $muted = [System.Windows.Media.ColorConverter]::ConvertFromString('#FF8C95B8')
+    $line  = [System.Windows.Media.ColorConverter]::ConvertFromString('#FFD6DCE8')
+    $white = [System.Windows.Media.ColorConverter]::ConvertFromString('#FFFFFFFF')
+
+    $glowBlue = New-Object System.Windows.Media.Effects.DropShadowEffect
+    $glowBlue.Color = $blue; $glowBlue.BlurRadius = 10; $glowBlue.ShadowDepth = 0; $glowBlue.Opacity = 0.45
+
+    switch ($Status) {
+        'pending' {
+            $node.Dot.Background = New-Object System.Windows.Media.SolidColorBrush $white
+            $node.Dot.BorderBrush = New-Object System.Windows.Media.SolidColorBrush $line
+            $node.Dot.Effect = $null
+            $node.Glyph.Text = ''
+            $node.Label.Foreground = New-Object System.Windows.Media.SolidColorBrush $muted
+            $node.Label.FontWeight = 'Normal'
+            $node.Detail.Visibility = 'Collapsed'
+            $node.Duration.Text = ''
+        }
+        'running' {
+            $node.Dot.Background = New-Object System.Windows.Media.SolidColorBrush $blue
+            $node.Dot.BorderBrush = New-Object System.Windows.Media.SolidColorBrush $blue
+            $node.Dot.Effect = $glowBlue
+            $node.Glyph.Text = [char]0x25CF   # filled circle (will pulse via storyboard)
+            $node.Glyph.Foreground = New-Object System.Windows.Media.SolidColorBrush $white
+            $node.Label.Foreground = New-Object System.Windows.Media.SolidColorBrush $ink
+            $node.Label.FontWeight = 'SemiBold'
+            $Script:TaskTimers[$Key] = Get-Date
+            # Pulse animation on the dot
+            $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
+            $anim.From = 1.0
+            $anim.To = 0.45
+            $anim.Duration = [System.Windows.Duration]::new([TimeSpan]::FromMilliseconds(800))
+            $anim.AutoReverse = $true
+            $anim.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+            $node.Dot.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $anim)
+            if ($PSBoundParameters.ContainsKey('Detail')) {
+                $node.Detail.Text = $Detail
+                $node.Detail.Visibility = if ($Detail) { 'Visible' } else { 'Collapsed' }
+            }
+            $node.Duration.Text = ''
+        }
+        'done' {
+            # Stop the pulse animation
+            $node.Dot.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
+            $node.Dot.Opacity = 1.0
+            $node.Dot.Background = New-Object System.Windows.Media.SolidColorBrush $green
+            $node.Dot.BorderBrush = New-Object System.Windows.Media.SolidColorBrush $green
+            $node.Dot.Effect = $null
+            $node.Glyph.Text = [char]0x2713   # check
+            $node.Glyph.Foreground = New-Object System.Windows.Media.SolidColorBrush $white
+            $node.Label.Foreground = New-Object System.Windows.Media.SolidColorBrush $ink
+            $node.Label.FontWeight = 'Normal'
+            $node.Detail.Visibility = 'Collapsed'
+            if ($Script:TaskTimers.ContainsKey($Key)) {
+                $elapsed = (Get-Date) - $Script:TaskTimers[$Key]
+                $node.Duration.Text = if ($elapsed.TotalMinutes -ge 1) {
+                    "{0:N1}m" -f $elapsed.TotalMinutes
+                } else {
+                    "{0:N1}s" -f $elapsed.TotalSeconds
+                }
+            }
+            $node.Duration.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#FFB0B8C8'))
+        }
+        'skip' {
+            $node.Dot.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
+            $node.Dot.Opacity = 1.0
+            $node.Dot.Background = New-Object System.Windows.Media.SolidColorBrush $white
+            $node.Dot.BorderBrush = New-Object System.Windows.Media.SolidColorBrush $muted
+            $node.Dot.Effect = $null
+            $node.Glyph.Text = [char]0x2212   # minus
+            $node.Glyph.Foreground = New-Object System.Windows.Media.SolidColorBrush $muted
+            $node.Label.Foreground = New-Object System.Windows.Media.SolidColorBrush $muted
+            $node.Label.FontWeight = 'Normal'
+            $node.Detail.Visibility = 'Collapsed'
+            $node.Duration.Text = 'skipped'
+            $node.Duration.Foreground = New-Object System.Windows.Media.SolidColorBrush $muted
+        }
+        'error' {
+            $node.Dot.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $null)
+            $node.Dot.Opacity = 1.0
+            $node.Dot.Background = New-Object System.Windows.Media.SolidColorBrush $red
+            $node.Dot.BorderBrush = New-Object System.Windows.Media.SolidColorBrush $red
+            $node.Dot.Effect = $null
+            $node.Glyph.Text = [char]0x00D7   # multiplication sign / x
+            $node.Glyph.Foreground = New-Object System.Windows.Media.SolidColorBrush $white
+            $node.Label.Foreground = New-Object System.Windows.Media.SolidColorBrush $red
+            $node.Label.FontWeight = 'SemiBold'
+            if ($PSBoundParameters.ContainsKey('Detail') -and $Detail) {
+                $node.Detail.Text = $Detail
+                $node.Detail.Visibility = 'Visible'
+                $node.Detail.Foreground = New-Object System.Windows.Media.SolidColorBrush $red
+            }
+            $node.Duration.Text = 'failed'
+            $node.Duration.Foreground = New-Object System.Windows.Media.SolidColorBrush $red
+        }
+    }
+
+    # Update counter (completed = done + skip)
+    $completed = 0
+    foreach ($k in $Script:TaskNodes.Keys) {
+        $g = $Script:TaskNodes[$k].Glyph.Text
+        if ($g -in @([char]0x2713, [char]0x2212, [char]0x00D7)) { $completed++ }
+    }
+    (Get-Element 'TaskCounter').Text = ("{0} / {1}" -f $completed, $Script:PipelineTasks.Count)
+
     [System.Windows.Forms.Application]::DoEvents()
+}
+
+# Adds a detail line under a running task (e.g. "downloading 1.2 / 4.0 MB").
+# This is the new lightweight replacement for Add-SetupLog UI-side.
+function Set-TaskDetail {
+    param([string]$Key, [string]$Detail)
+    $node = $Script:TaskNodes[$Key]
+    if (-not $node) { return }
+    $node.Detail.Text = $Detail
+    $node.Detail.Visibility = if ($Detail) { 'Visible' } else { 'Collapsed' }
+    [System.Windows.Forms.Application]::DoEvents()
+}
+
+# Add-SetupLog now only writes to the log file. The UI is driven by Update-Task /
+# Set-TaskDetail. This preserves full debug history without the ugly terminal.
+function Add-SetupLog {
+    param([string]$Message)
+    $stamp = (Get-Date -Format 'HH:mm:ss')
+    Add-Content -Path $Script:SetupLogPath -Value "[$stamp] $Message"
 }
 
 function Set-SetupProgress {
     param([int]$Percent, [string]$Text)
     (Get-Element 'SetupProgress').Value = $Percent
-    if ($Text) { (Get-Element 'SetupProgressText').Text = $Text }
+    if ($Text) { (Get-Element 'SetupProgressText').Text = $Text.ToLower() }
     [System.Windows.Forms.Application]::DoEvents()
 }
 
@@ -1893,7 +2138,7 @@ function Set-SetupProgress {
 
 (Get-Element 'InstallSnapBtn').Add_Click({
     (Get-Element 'InstallSnapBtn').IsEnabled = $false
-    (Get-Element 'InstallSnapBtn').Content = 'Installazione silent in corso (~3-5 min)...'
+    (Get-Element 'InstallSnapBtn').Content = 'Silent install in progress (~3-5 min)...'
     try {
         Invoke-SnapInstaller -InstallerPath $Script:BundledSnapPath `
             -StatusCallback { param($m) (Get-Element 'InstallSnapBtn').Content = $m } | Out-Null
@@ -1901,16 +2146,16 @@ function Set-SetupProgress {
         $found = Find-Snap
         if ($found) {
             (Get-Element 'SnapPathBox').Text = $found
-            (Get-Element 'SnapStatus').Text = "[OK] SNAP installato correttamente."
+            (Get-Element 'SnapStatus').Text = "[OK] SNAP installed successfully."
             (Get-Element 'SnapStatus').Foreground = '#FF008000'
             (Get-Element 'SnapInstallHint').Visibility = 'Collapsed'
         } else {
             (Get-Element 'InstallSnapBtn').Content = 'Riprova rilevamento'
             (Get-Element 'InstallSnapBtn').IsEnabled = $true
-            [System.Windows.MessageBox]::Show('SNAP installato ma gpt.exe non rilevato. Indica il path manualmente con Sfoglia.', 'Rilevamento SNAP', 'OK', 'Warning') | Out-Null
+            [System.Windows.MessageBox]::Show('SNAP installed but gpt.exe not detected. Provide the path manually using Browse.', 'SNAP detection', 'OK', 'Warning') | Out-Null
         }
     } catch {
-        [System.Windows.MessageBox]::Show("Errore durante l'install di SNAP:`n$($_.Exception.Message)", 'Errore', 'OK', 'Error') | Out-Null
+        [System.Windows.MessageBox]::Show("Error during SNAP install:`n$($_.Exception.Message)", 'Error', 'OK', 'Error') | Out-Null
         (Get-Element 'InstallSnapBtn').Content = 'Installa SNAP ora'
         (Get-Element 'InstallSnapBtn').IsEnabled = $true
     }
@@ -1935,13 +2180,13 @@ function Set-SetupProgress {
         Install-PythonPackages -PythonExe $result.Exe -StatusCallback $statusCb
         $Script:State.PythonExe = $result.Exe
         $Script:State.PythonVersion = $result.Version
-        (Get-Element 'PythonStatus').Text = "[OK] Python $($result.Version) installato."
+        (Get-Element 'PythonStatus').Text = "[OK] Python $($result.Version) installed."
         (Get-Element 'PythonStatus').Foreground = '#FF008000'
         (Get-Element 'PythonPath').Text = $result.Exe
         (Get-Element 'PythonInstallPanel').Visibility = 'Collapsed'
         (Get-Element 'NextBtn').IsEnabled = $true
     } catch {
-        [System.Windows.MessageBox]::Show("Errore durante l'install di Python:`n$($_.Exception.Message)", 'Errore', 'OK', 'Error') | Out-Null
+        [System.Windows.MessageBox]::Show("Error during Python install:`n$($_.Exception.Message)", 'Error', 'OK', 'Error') | Out-Null
         (Get-Element 'InstallPythonBtn').IsEnabled = $true
     }
 })
@@ -1965,7 +2210,7 @@ function Set-SetupProgress {
         Show-Page 7
     } catch {
         Add-SetupLog "ERRORE FATALE: $($_.Exception.Message)"
-        [System.Windows.MessageBox]::Show("Installazione fallita:`n$($_.Exception.Message)`n`nLog: $Script:SetupLogPath", 'Errore', 'OK', 'Error') | Out-Null
+        [System.Windows.MessageBox]::Show("Installation failed:`n$($_.Exception.Message)`n`nLog: $Script:SetupLogPath", 'Error', 'OK', 'Error') | Out-Null
         (Get-Element 'CancelBtn').IsEnabled = $true
     }
 })
@@ -1989,127 +2234,144 @@ function Invoke-FullSetup {
     Add-SetupLog "SNAP:    $($Script:State.SnapGpt)"
     Add-SetupLog "Python:  $($Script:State.PythonExe) ($($Script:State.PythonVersion))"
     Add-SetupLog "Dest:    $($Script:State.InstallDir)"
-    Add-SetupLog ""
 
-    # Step 1: ensure git is available. Se assente, scarica Portable Git in
-    # %LOCALAPPDATA%\PHASE\portable-git (no UAC, no install di sistema, no
-    # credenziali richieste - i 3 repo sono pubblici, clone HTTPS anonimo).
-    Set-SetupProgress 5 'Verifica git...'
+    # Task 1: git
+    Set-SetupProgress 5 'detecting git'
+    Update-Task -Key 'git' -Status 'running' -Detail 'looking for git on PATH...'
     $git = Find-Git
     if (-not $git) {
-        Add-SetupLog "git non trovato sul sistema. Scarico Portable Git..."
+        Update-Task -Key 'git' -Status 'running' -Detail 'downloading Portable Git (~60 MB)...'
+        Add-SetupLog "git not found on system. Downloading Portable Git..."
         try {
             $git = Install-PortableGit `
-                -StatusCallback { param($m) Add-SetupLog $m } `
-                -ProgressCallback { param($pct) Set-SetupProgress $pct "Download Portable Git $pct%" }
+                -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'git' -Detail $m } `
+                -ProgressCallback { param($pct) Set-SetupProgress $pct "downloading portable git $pct%"; Set-TaskDetail -Key 'git' -Detail "downloading $pct%" }
         } catch {
-            throw "Impossibile installare Portable Git: $($_.Exception.Message). Installa manualmente da git-scm.com/download/win e rilancia l'installer."
+            Update-Task -Key 'git' -Status 'error' -Detail $_.Exception.Message
+            throw "Unable to install Portable Git: $($_.Exception.Message). Install manually from git-scm.com/download/win and re-run the installer."
         }
     }
     $Script:State.GitExe = $git
+    Update-Task -Key 'git' -Status 'done'
     Add-SetupLog "[OK] git: $git"
 
-    # Step 2: ensure destination exists
     if (-not (Test-Path $Script:State.InstallDir)) {
         New-Item -ItemType Directory -Path $Script:State.InstallDir -Force | Out-Null
-        Add-SetupLog "[OK] Creata $($Script:State.InstallDir)"
+        Add-SetupLog "[OK] Created $($Script:State.InstallDir)"
     }
-
-    # Step 3: clone PHASE
-    Set-SetupProgress 15 'Clone PHASE...'
     $phaseDir = Join-Path $Script:State.InstallDir 'PHASE'
-    Invoke-GitClone -GitExe $git -Repo $Script:PhaseRepo -Branch $Script:PhaseBranch `
-        -Destination $phaseDir -StatusCallback { param($m) Add-SetupLog $m }
-    Add-SetupLog "[OK] PHASE clonato in $phaseDir"
-
-    # Step 4: clone StaMPS
-    Set-SetupProgress 35 'Clone StaMPS...'
     $stampsDir = Join-Path $phaseDir 'StaMPS'
-    Invoke-GitClone -GitExe $git -Repo $Script:StampsRepo -Branch $Script:StampsBranch `
-        -Destination $stampsDir -StatusCallback { param($m) Add-SetupLog $m }
-    Add-SetupLog "[OK] StaMPS clonato in $stampsDir"
-
-    # Step 5: clone TRAIN
-    Set-SetupProgress 50 'Clone TRAIN...'
     $trainDir = Join-Path $phaseDir 'TRAIN'
+
+    # Task 2: clone PHASE
+    Set-SetupProgress 15 'cloning phase'
+    Update-Task -Key 'clone-phase' -Status 'running' -Detail $Script:PhaseRepo
+    Invoke-GitClone -GitExe $git -Repo $Script:PhaseRepo -Branch $Script:PhaseBranch `
+        -Destination $phaseDir -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'clone-phase' -Detail $m }
+    Update-Task -Key 'clone-phase' -Status 'done'
+    Add-SetupLog "[OK] PHASE cloned at $phaseDir"
+
+    # Task 3: clone StaMPS
+    Set-SetupProgress 30 'cloning stamps'
+    Update-Task -Key 'clone-stamps' -Status 'running' -Detail $Script:StampsRepo
+    Invoke-GitClone -GitExe $git -Repo $Script:StampsRepo -Branch $Script:StampsBranch `
+        -Destination $stampsDir -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'clone-stamps' -Detail $m }
+    Update-Task -Key 'clone-stamps' -Status 'done'
+    Add-SetupLog "[OK] StaMPS cloned at $stampsDir"
+
+    # Task 4: clone TRAIN
+    Set-SetupProgress 45 'cloning train'
+    Update-Task -Key 'clone-train' -Status 'running' -Detail $Script:TrainRepo
     Invoke-GitClone -GitExe $git -Repo $Script:TrainRepo -Branch $Script:TrainBranch `
-        -Destination $trainDir -StatusCallback { param($m) Add-SetupLog $m }
-    Add-SetupLog "[OK] TRAIN clonato in $trainDir"
+        -Destination $trainDir -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'clone-train' -Detail $m }
+    Update-Task -Key 'clone-train' -Status 'done'
+    Add-SetupLog "[OK] TRAIN cloned at $trainDir"
 
-    # Step 6: StaMPS install (Triangle/snaphu)
-    Set-SetupProgress 65 'Build StaMPS (Triangle/snaphu)...'
-    $stampsOk = Invoke-StampsInstall -StampsRoot $stampsDir -StatusCallback { param($m) Add-SetupLog $m }
+    # Task 5: StaMPS install (Triangle/snaphu)
+    Set-SetupProgress 55 'building stamps tools'
+    Update-Task -Key 'stamps-build' -Status 'running' -Detail 'running install-windows.ps1 (may take 5-10 min)...'
+    $stampsOk = Invoke-StampsInstall -StampsRoot $stampsDir -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'stamps-build' -Detail $m }
     if ($stampsOk) {
-        Add-SetupLog "[OK] StaMPS install-windows.ps1 completato"
+        Update-Task -Key 'stamps-build' -Status 'done'
+        Add-SetupLog "[OK] StaMPS install-windows.ps1 completed"
     } else {
-        Add-SetupLog "[!] StaMPS install-windows.ps1 fallito o non disponibile (Triangle/snaphu da sorgente)."
+        Update-Task -Key 'stamps-build' -Status 'skip'
+        Add-SetupLog "[!] StaMPS install-windows.ps1 failed or unavailable (Triangle/snaphu from source)."
     }
 
-    # Download diretto dei 7 .exe StaMPS (necessari per il workflow PSI).
-    # Indipendente da install-windows.ps1 perche' questo cerca un asset
-    # con nome sbagliato per il fork Tiopio01.
-    Set-SetupProgress 75 'Download binari nativi StaMPS (calamp, pscphase, ...)...'
-    $binOk = Invoke-StampsBinariesDownload -StampsRoot $stampsDir -StatusCallback { param($m) Add-SetupLog $m }
+    # Task 6: StaMPS native binaries
+    Set-SetupProgress 65 'downloading native binaries'
+    Update-Task -Key 'stamps-bin' -Status 'running' -Detail 'fetching stamps-win64-binaries.zip (~4 MB)...'
+    $binOk = Invoke-StampsBinariesDownload -StampsRoot $stampsDir -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'stamps-bin' -Detail $m }
     if ($binOk) {
-        Add-SetupLog "[OK] 7 binari StaMPS pronti in $stampsDir\bin"
+        Update-Task -Key 'stamps-bin' -Status 'done'
+        Add-SetupLog "[OK] 7 StaMPS binaries ready in $stampsDir\bin"
     } else {
-        Add-SetupLog "[!] Download binari StaMPS fallito - mt_prep_snap non funzionera' senza di essi."
+        Update-Task -Key 'stamps-bin' -Status 'error' -Detail 'download failed - mt_prep_snap will not work'
+        Add-SetupLog "[!] StaMPS binaries download failed - mt_prep_snap will not work."
     }
 
-    # GMT (Generic Mapping Tools): necessario per TRAIN tropo_method='a_gacos'.
-    # Portable zip estratto in %LOCALAPPDATA%\PHASE\gmt - no UAC, no dialog.
-    Set-SetupProgress 78 'Verifica/install GMT portable (Generic Mapping Tools)...'
+    # Task 7: GMT
+    Set-SetupProgress 75 'installing gmt'
+    Update-Task -Key 'gmt' -Status 'running' -Detail 'checking GMT installation...'
     try {
         $gmtPath = Install-GmtSilent `
-            -StatusCallback { param($m) Add-SetupLog $m } `
-            -ProgressCallback { param($pct) Set-SetupProgress $pct "Download GMT $pct%" }
-        Add-SetupLog "[OK] GMT pronto: $gmtPath"
+            -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'gmt' -Detail $m } `
+            -ProgressCallback { param($pct) Set-SetupProgress $pct "downloading gmt $pct%"; Set-TaskDetail -Key 'gmt' -Detail "downloading $pct%" }
+        Update-Task -Key 'gmt' -Status 'done'
+        Add-SetupLog "[OK] GMT ready: $gmtPath"
     } catch {
-        Add-SetupLog "[!] Install GMT fallito: $($_.Exception.Message). Necessario solo per tropo_method=a_gacos, gli altri workflow funzionano comunque."
+        Update-Task -Key 'gmt' -Status 'skip' -Detail 'optional - only needed for a_gacos'
+        Add-SetupLog "[!] GMT install failed: $($_.Exception.Message). Only required for tropo_method=a_gacos."
     }
 
-    # Step 7: configure environment
-    Set-SetupProgress 80 'Configurazione ambiente...'
+    # Task 8: env configuration
+    Set-SetupProgress 82 'configuring environment'
+    Update-Task -Key 'env' -Status 'running' -Detail 'writing env vars and config files...'
     Set-MatlabEnvVar -MatlabExe $Script:State.MatlabExe
-    Add-SetupLog "[OK] MATLAB_EXE settato (user env var)"
-
+    Add-SetupLog "[OK] MATLAB_EXE set (user env var)"
     Set-PhasePythonConfig -PythonExe $Script:State.PythonExe
-    Add-SetupLog "[OK] %APPDATA%\PHASE\python.txt scritto"
-
+    Add-SetupLog "[OK] %APPDATA%\PHASE\python.txt written"
     Write-ProjectConfTemplate -InstallDir $phaseDir -SnapGpt $Script:State.SnapGpt
-    Add-SetupLog "[OK] project.conf.template scritto in $phaseDir"
+    Add-SetupLog "[OK] project.conf.template written at $phaseDir"
+    Update-Task -Key 'env' -Status 'done'
 
-    # Step 8: MATLAB savepath + scrittura input_StaMPS.mat precompilato
-    Set-SetupProgress 90 'MATLAB addpath/savepath + setup input_StaMPS.mat...'
+    # Task 9: MATLAB savepath + .mat files
+    Set-SetupProgress 90 'matlab savepath + .mat files'
+    Update-Task -Key 'matlab' -Status 'running' -Detail 'launching matlab -batch (30-60s startup)...'
     $savepathResult = Invoke-MatlabSavePath -MatlabExe $Script:State.MatlabExe `
         -StampsRoot $stampsDir -TrainRoot $trainDir -PhaseRoot $phaseDir `
         -PythonExe $Script:State.PythonExe -SnapGpt $Script:State.SnapGpt `
-        -StatusCallback { param($m) Add-SetupLog $m }
+        -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'matlab' -Detail $m }
     if ($savepathResult.Success) {
-        Add-SetupLog "[OK] MATLAB savepath OK (StaMPS + TRAIN aggiunti permanentemente)"
-        Add-SetupLog "[OK] input_StaMPS.mat precompilato (installation_folder + project_path)"
-        Add-SetupLog "[OK] input_preprocessing.mat precompilato (python + gptbin_path)"
+        Update-Task -Key 'matlab' -Status 'done'
+        Add-SetupLog "[OK] MATLAB savepath OK (StaMPS + TRAIN added permanently)"
+        Add-SetupLog "[OK] input_StaMPS.mat pre-populated (installation_folder + project_path)"
+        Add-SetupLog "[OK] input_preprocessing.mat pre-populated (python + gptbin_path)"
     } else {
-        Add-SetupLog "[!] MATLAB savepath non confermato (exit code $($savepathResult.ExitCode))."
+        Update-Task -Key 'matlab' -Status 'skip' -Detail "exit $($savepathResult.ExitCode) - run addpath/savepath manually"
+        Add-SetupLog "[!] MATLAB savepath not confirmed (exit code $($savepathResult.ExitCode))."
         if ($savepathResult.Output) {
-            Add-SetupLog "Output MATLAB:"
+            Add-SetupLog "MATLAB output:"
             foreach ($line in ($savepathResult.Output -split "`n")) {
                 if ($line.Trim()) { Add-SetupLog "    $line" }
             }
         }
         Add-SetupLog ""
-        Add-SetupLog "Apri MATLAB e lancia manualmente questi comandi:"
+        Add-SetupLog "Open MATLAB and run these commands manually:"
         Add-SetupLog "    addpath(genpath('$($stampsDir.Replace('\','/'))/matlab')); savepath"
         if ($trainDir) {
             Add-SetupLog "    addpath(genpath('$($trainDir.Replace('\','/'))/matlab')); savepath"
         }
     }
 
-    # Step 9: patch dei .mlapp per auto-load (cosi' l'utente apre il .mlapp
-    # con doppio click e i campi sono gia' popolati senza dover cliccare Load).
-    # Prima killa ogni MATLAB aperto: se una classe rotta era stata cachata
-    # prima della patch, MATLAB la conserva fino al successivo riavvio.
-    Set-SetupProgress 95 'Patch .mlapp per auto-load...'
+    # Task 10: patch .mlapp files
+    Set-SetupProgress 95 'patching mlapp files'
+    Update-Task -Key 'patch' -Status 'running' -Detail 'injecting startupFcn auto-load patches...'
+    Get-Process matlab -ErrorAction SilentlyContinue | ForEach-Object {
+        try { $_ | Stop-Process -Force; Add-SetupLog "MATLAB closed (PID $($_.Id)) to avoid stale class cache" } catch {}
+    }
+    Start-Sleep -Seconds 2
     Get-Process matlab -ErrorAction SilentlyContinue | ForEach-Object {
         try { $_ | Stop-Process -Force; Add-SetupLog "MATLAB chiuso (PID $($_.Id)) per evitare cache stale" } catch {}
     }
@@ -2226,9 +2488,10 @@ function Invoke-FullSetup {
         -InjectBlock $modelInject `
         -StatusCallback { param($m) Add-SetupLog $m })
 
-    Set-SetupProgress 100 'Completato!'
+    Update-Task -Key 'patch' -Status 'done'
+    Set-SetupProgress 100 'all done'
     Add-SetupLog ""
-    Add-SetupLog "=== Installazione completata ==="
+    Add-SetupLog "=== Installation complete ==="
     Add-SetupLog "Apri uno di questi file in MATLAB:"
     Add-SetupLog "  $phaseDir\PHASE_Preprocessing.mlapp"
     Add-SetupLog "  $phaseDir\PHASE_Preprocessing\PHASE_StaMPS.mlapp"
