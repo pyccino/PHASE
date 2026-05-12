@@ -369,23 +369,35 @@ function Get-RemoteFile {
     $dir = Split-Path -Parent $OutFile
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
 
-    # Invoke-WebRequest with manual progress (BITS requires admin for some URLs)
     $req = [System.Net.HttpWebRequest]::Create($Url)
     $req.UserAgent = 'PHASE-Installer/1.0'
     $resp = $req.GetResponse()
     $total = $resp.ContentLength
     $stream = $resp.GetResponseStream()
     $fileStream = [System.IO.File]::Create($OutFile)
-    $buffer = New-Object byte[] 81920
+    # Use a much larger buffer (1 MB) so the read loop yields the thread
+    # less frequently and the I/O has time to flush. Smaller buffers
+    # (81 KB) cause the loop to spin so fast that DoEvents pumping can't
+    # keep up on large downloads (1 GB SNAP -> 12 800 iterations).
+    $buffer = New-Object byte[] 1048576
     $read = 0
     $totalRead = 0
+    $lastPct = -1
     try {
         while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
             $fileStream.Write($buffer, 0, $read)
             $totalRead += $read
-            if ($ProgressCallback -and $total -gt 0) {
+            if ($total -gt 0) {
                 $pct = [Math]::Min(100, [int](($totalRead / $total) * 100))
-                & $ProgressCallback $pct
+                # Pump the WPF/WinForms message loop every iteration so the
+                # main thread stays responsive (no "not responding" title
+                # bar on multi-minute downloads). Cost: a few ms per MB,
+                # negligible vs the network throughput.
+                [System.Windows.Forms.Application]::DoEvents()
+                if ($pct -ne $lastPct -and $ProgressCallback) {
+                    & $ProgressCallback $pct
+                    $lastPct = $pct
+                }
             }
         }
     } finally {
