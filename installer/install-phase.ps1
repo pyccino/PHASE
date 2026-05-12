@@ -1763,9 +1763,9 @@ function Initialize-SnapPage {
         (Get-Element 'SnapStatus').Foreground = '#FFA04000'
         (Get-Element 'SnapPathBox').Text = ''
         $hint = if (Test-Path $Script:BundledSnapPath) {
-            "L'installer SNAP 13.0.0 e' bundled in questa distribuzione (~1 GB). Cliccando 'Installa SNAP ora' parte in modalita' silent (no Avanti×N): richiede solo il prompt UAC, ~3-5 minuti totali. Se il silent fallisce, fallback automatico al wizard interattivo."
+            "The SNAP 13.0.0 installer is bundled with this distribution (~1 GB). Clicking 'Install SNAP now' runs it silently (no Next x N): only a single UAC prompt is required, ~3-5 minutes total. If the silent run fails, it falls back to the interactive wizard automatically."
         } else {
-            "L'installer SNAP non e' bundled. Scaricalo da step.esa.int/main/download/snap-download/ e indicane il gpt.exe qui sopra."
+            "The SNAP installer is not bundled. Download it from step.esa.int/main/download/snap-download/, install it manually, then point the gpt.exe path above to the new install."
         }
         (Get-Element 'SnapInstallText').Text = $hint
         (Get-Element 'SnapInstallHint').Visibility = 'Visible'
