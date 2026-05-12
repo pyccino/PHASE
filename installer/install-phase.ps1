@@ -1002,34 +1002,209 @@ function Invoke-StampsBinariesDownload {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="PHASE Installer"
-        Width="720" Height="640"
+        Width="960" Height="680"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Background="#FFF7F7F8">
+        Background="#FFFCFCFE"
+        FontFamily="Segoe UI">
     <Window.Resources>
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="16,8"/>
+        <!-- Palette PHASE: primary blu #4A6FD8, accent magenta #D1397E -->
+
+        <!-- Pill-style primary button (Avanti / Avvia / azioni principali) -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#4A6FD8"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="22,10"/>
+            <Setter Property="MinWidth" Value="110"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="6,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#5A80E8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#3A5EC8"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#C5CFE8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Outlined secondary button (Indietro / Sfoglia / Annulla) -->
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#4A6FD8"/>
+            <Setter Property="BorderBrush" Value="#D8DCE8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="20,10"/>
             <Setter Property="MinWidth" Value="100"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Margin" Value="6,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F4F6FC"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#A0AAB8"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#E8ECF2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
+
+        <!-- Default fallback button style -->
+        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}"/>
+
         <Style TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="#1E2330"/>
         </Style>
+
         <Style TargetType="TextBox">
-            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="Padding" Value="10,8"/>
             <Setter Property="FontFamily" Value="Consolas"/>
             <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderBrush" Value="#D8DCE8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border" Background="White" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5">
+                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#4A6FD8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Step indicator dot — circle in sidebar -->
+        <Style x:Key="StepDot" TargetType="Border">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Background" Value="#FFFFFF22"/>
+            <Setter Property="BorderBrush" Value="#FFFFFF55"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
         </Style>
     </Window.Resources>
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
 
-        <!-- Wizard pages: only one Visible at a time -->
-        <Grid Grid.Row="0" Margin="32,28,32,12">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- =============== SIDEBAR =============== -->
+        <Grid Grid.Column="0">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0.6,1">
+                    <GradientStop Offset="0" Color="#4A6FD8"/>
+                    <GradientStop Offset="1" Color="#D1397E"/>
+                </LinearGradientBrush>
+            </Grid.Background>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Logo PHASE -->
+            <Border Grid.Row="0" Background="White" CornerRadius="10" Margin="20,28,20,16" Padding="14">
+                <Image x:Name="LogoImage" Stretch="Uniform" MaxHeight="80"/>
+            </Border>
+
+            <!-- Step indicator -->
+            <StackPanel Grid.Row="1" Margin="28,8,20,0">
+                <TextBlock Text="I N S T A L L A Z I O N E" FontSize="10" FontWeight="SemiBold" Foreground="#FFFFFFAA" Margin="0,0,0,14"/>
+
+                <Grid x:Name="StepRow1" Margin="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border x:Name="StepDot1" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum1" Text="1" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock x:Name="StepText1" Grid.Column="1" Text="Welcome" Foreground="White" FontSize="13" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                </Grid>
+                <Grid x:Name="StepRow2" Margin="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border x:Name="StepDot2" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum2" Text="2" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock x:Name="StepText2" Grid.Column="1" Text="MATLAB" Foreground="White" FontSize="13" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                </Grid>
+                <Grid x:Name="StepRow3" Margin="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border x:Name="StepDot3" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum3" Text="3" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock x:Name="StepText3" Grid.Column="1" Text="SNAP" Foreground="White" FontSize="13" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                </Grid>
+                <Grid x:Name="StepRow4" Margin="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border x:Name="StepDot4" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum4" Text="4" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock x:Name="StepText4" Grid.Column="1" Text="Python" Foreground="White" FontSize="13" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                </Grid>
+                <Grid x:Name="StepRow5" Margin="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border x:Name="StepDot5" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum5" Text="5" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock x:Name="StepText5" Grid.Column="1" Text="Destinazione" Foreground="White" FontSize="13" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                </Grid>
+                <Grid x:Name="StepRow6" Margin="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border x:Name="StepDot6" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum6" Text="6" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock x:Name="StepText6" Grid.Column="1" Text="Installazione" Foreground="White" FontSize="13" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                </Grid>
+                <Grid x:Name="StepRow7" Margin="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border x:Name="StepDot7" Style="{StaticResource StepDot}"><TextBlock x:Name="StepNum7" Text="7" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock x:Name="StepText7" Grid.Column="1" Text="Fine" Foreground="White" FontSize="13" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                </Grid>
+            </StackPanel>
+
+            <!-- Footer sidebar: version -->
+            <StackPanel Grid.Row="2" Margin="28,0,20,22">
+                <Border Background="#FFFFFF22" CornerRadius="6" Padding="10,8" Margin="0,0,0,10">
+                    <TextBlock Text="Persistent scatterer Highly Automated Suite for Environmental monitoring" TextWrapping="Wrap" FontSize="10" Foreground="#FFFFFFCC"/>
+                </Border>
+                <TextBlock Text="v1.7  ·  pyccino/PHASE" FontSize="10" Foreground="#FFFFFFAA"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- =============== CONTENT AREA =============== -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Step label header -->
+            <Border Grid.Row="0" Background="White" BorderBrush="#F0F1F5" BorderThickness="0,0,0,1" Padding="40,18">
+                <TextBlock x:Name="StepLabel" FontSize="11" FontWeight="SemiBold" Foreground="#9098B0"/>
+            </Border>
+
+            <!-- Wizard pages -->
+            <Grid Grid.Row="1" Margin="40,32,40,16">
 
             <!-- Page 1: Welcome -->
             <StackPanel x:Name="Page1_Welcome" Visibility="Visible">
@@ -1224,19 +1399,14 @@ function Invoke-StampsBinariesDownload {
 
         </Grid>
 
-        <!-- Footer with Back/Next/Cancel -->
-        <Grid Grid.Row="1" Background="#FFEDEDED">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock x:Name="StepLabel" Grid.Column="0" Margin="32,16,0,16"
-                       VerticalAlignment="Center" Foreground="#FF606060" FontSize="12"/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,12,32,12">
-                <Button x:Name="BackBtn" Content="Indietro"/>
-                <Button x:Name="NextBtn" Content="Avanti"/>
-                <Button x:Name="CancelBtn" Content="Annulla"/>
-            </StackPanel>
+            <!-- Footer with Back/Next/Cancel — moderno, integrato nella content area -->
+            <Border Grid.Row="2" Background="#FAFBFD" BorderBrush="#F0F1F5" BorderThickness="0,1,0,0" Padding="40,16">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BackBtn" Content="Indietro" Style="{StaticResource SecondaryButton}"/>
+                    <Button x:Name="NextBtn" Content="Avanti" Style="{StaticResource PrimaryButton}"/>
+                    <Button x:Name="CancelBtn" Content="Annulla" Style="{StaticResource SecondaryButton}"/>
+                </StackPanel>
+            </Border>
         </Grid>
     </Grid>
 </Window>
@@ -1252,6 +1422,36 @@ $window = [Windows.Markup.XamlReader]::Load($reader)
 # Helper: find named element
 function Get-Element { param([string]$Name) $window.FindName($Name) }
 
+# Carica il logo PHASE nella sidebar. Lo cerchiamo accanto all'.exe (file
+# bundled in installer/PHASE_logo.png) e graceful-degrade se assente.
+function Set-PhaseLogo {
+    $candidates = @(
+        (Join-Path $Script:ScriptDir 'PHASE_logo.png'),
+        (Join-Path $Script:ScriptDir '..\PHASE_logo.png'),
+        'F:\phase\PHASE_logo.png'
+    )
+    foreach ($p in $candidates) {
+        if ($p -and (Test-Path $p)) {
+            try {
+                $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
+                $bmp.BeginInit()
+                $bmp.UriSource = New-Object System.Uri ($p, [System.UriKind]::Absolute)
+                $bmp.CacheOption = 'OnLoad'
+                $bmp.EndInit()
+                $bmp.Freeze()
+                (Get-Element 'LogoImage').Source = $bmp
+                return
+            } catch {
+                continue
+            }
+        }
+    }
+    # Fallback: testo se nessun logo trovato (mantengo Image vuota, il
+    # Border bianco resta ma con un placeholder testuale)
+    (Get-Element 'LogoImage').Source = $null
+}
+Set-PhaseLogo
+
 # Element references
 $pages = @{
     1 = Get-Element 'Page1_Welcome'
@@ -1263,17 +1463,61 @@ $pages = @{
     7 = Get-Element 'Page7_Finish'
 }
 $labels = @{
-    1 = 'Step 1 di 7 - Welcome'
-    2 = 'Step 2 di 7 - MATLAB'
-    3 = 'Step 3 di 7 - SNAP'
-    4 = 'Step 4 di 7 - Python'
-    5 = 'Step 5 di 7 - Cartella destinazione'
-    6 = 'Step 6 di 7 - Installazione'
-    7 = 'Step 7 di 7 - Fine'
+    1 = 'WELCOME'
+    2 = 'STEP 2  ·  MATLAB'
+    3 = 'STEP 3  ·  SNAP'
+    4 = 'STEP 4  ·  PYTHON'
+    5 = 'STEP 5  ·  CARTELLA DESTINAZIONE'
+    6 = 'STEP 6  ·  INSTALLAZIONE'
+    7 = 'STEP 7  ·  FINE'
 }
 
 $Script:CurrentPage = 1
 $Script:SetupLogPath = Join-Path $env:TEMP "phase-installer-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+
+# Aggiorna lo step indicator nella sidebar: cerchi numerati colorati in base
+# allo stato (done=bianco/check, current=magenta acceso, pending=trasparente).
+function Update-StepIndicator {
+    param([int]$Current)
+    $doneColor    = [System.Windows.Media.ColorConverter]::ConvertFromString('#FFFFFFCC')   # off-white per done
+    $currentColor = [System.Windows.Media.ColorConverter]::ConvertFromString('#FFE8C547')   # giallo dorato per current
+    $pendingColor = [System.Windows.Media.ColorConverter]::ConvertFromString('#FFFFFF22')   # trasparente per pending
+    $borderDone   = [System.Windows.Media.ColorConverter]::ConvertFromString('#FFFFFFCC')
+    $borderCurr   = [System.Windows.Media.ColorConverter]::ConvertFromString('#FFFFFFFF')
+    $borderPend   = [System.Windows.Media.ColorConverter]::ConvertFromString('#FFFFFF55')
+
+    for ($i = 1; $i -le 7; $i++) {
+        $dot = Get-Element "StepDot$i"
+        $num = Get-Element "StepNum$i"
+        $txt = Get-Element "StepText$i"
+        if (-not $dot) { continue }
+        if ($i -lt $Current) {
+            # Done: cerchio bianco con check
+            $dot.Background = New-Object System.Windows.Media.SolidColorBrush $doneColor
+            $dot.BorderBrush = New-Object System.Windows.Media.SolidColorBrush $borderDone
+            $num.Text = [char]0x2713   # checkmark
+            $num.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#4A6FD8'))
+            $txt.Opacity = 0.85
+            $txt.FontWeight = 'Normal'
+        } elseif ($i -eq $Current) {
+            # Current: cerchio acceso
+            $dot.Background = New-Object System.Windows.Media.SolidColorBrush $currentColor
+            $dot.BorderBrush = New-Object System.Windows.Media.SolidColorBrush $borderCurr
+            $num.Text = "$i"
+            $num.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#3A4A6A'))
+            $txt.Opacity = 1.0
+            $txt.FontWeight = 'SemiBold'
+        } else {
+            # Pending: cerchio trasparente con numero
+            $dot.Background = New-Object System.Windows.Media.SolidColorBrush $pendingColor
+            $dot.BorderBrush = New-Object System.Windows.Media.SolidColorBrush $borderPend
+            $num.Text = "$i"
+            $num.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString('#FFFFFFCC'))
+            $txt.Opacity = 0.6
+            $txt.FontWeight = 'Normal'
+        }
+    }
+}
 
 function Show-Page {
     param([int]$N)
@@ -1281,6 +1525,7 @@ function Show-Page {
         $pages[$k].Visibility = if ($k -eq $N) { 'Visible' } else { 'Collapsed' }
     }
     (Get-Element 'StepLabel').Text = $labels[$N]
+    Update-StepIndicator -Current $N
     (Get-Element 'BackBtn').IsEnabled = ($N -gt 1 -and $N -lt 7)
     (Get-Element 'NextBtn').IsEnabled = ($N -lt 6)
     (Get-Element 'NextBtn').Content = if ($N -eq 5) { 'Procedi' } else { 'Avanti' }
