@@ -96,6 +96,39 @@ function Find-Matlab {
     return $null
 }
 
+# Verifica quali toolbox MATLAB sono installate ispezionando le sub-directory
+# di <MATLABROOT>\toolbox\. Molto piu' veloce di matlab -batch "v=ver" (<100ms
+# vs 30s di startup MATLAB). Affidabile: ogni MathWorks toolbox crea sempre
+# la sua sub-folder dedicata con quel nome canonico.
+#
+# Returns hashtable @{ 'Mapping Toolbox' = $true/$false; ... }.
+function Find-MatlabToolboxes {
+    param([Parameter(Mandatory)] [string]$MatlabExe)
+
+    # <MATLABROOT> = parent di bin\ = parent di matlab.exe parent
+    $matlabRoot = Split-Path -Parent (Split-Path -Parent $MatlabExe)
+    $toolboxDir = Join-Path $matlabRoot 'toolbox'
+
+    # Mapping (display name) -> (cartella sotto toolbox\)
+    $toolboxFolders = [ordered]@{
+        'Mapping Toolbox' = 'map'
+        'Image Processing Toolbox' = 'images'
+        'Signal Processing Toolbox' = 'signal'
+        'Statistics and Machine Learning Toolbox' = 'stats'
+        'Parallel Computing Toolbox' = 'parallel'
+    }
+
+    $result = [ordered]@{}
+    foreach ($displayName in $toolboxFolders.Keys) {
+        $folder = $toolboxFolders[$displayName]
+        $result[$displayName] = Test-Path -LiteralPath (Join-Path $toolboxDir $folder)
+    }
+    return $result
+}
+
+# Toolbox bloccanti per PHASE - se mancano, non si può fare PSI.
+$Script:RequiredToolboxes = @('Mapping Toolbox', 'Image Processing Toolbox')
+
 # SNAP: cerca gpt.exe in tutte le install standard.
 # Returns absolute path to gpt.exe or $null.
 function Find-Snap {
@@ -1022,6 +1055,16 @@ function Invoke-StampsBinariesDownload {
                         <Button x:Name="OpenMathworksBtn" Content="Apri mathworks.com" HorizontalAlignment="Left"/>
                     </StackPanel>
                 </Border>
+
+                <Border x:Name="MatlabToolboxStatus" BorderBrush="#FFE0E0E0" BorderThickness="1" CornerRadius="4"
+                        Padding="12" Background="White" Margin="0,16,0,0" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock x:Name="MatlabToolboxHeader" Text="Toolbox MATLAB" FontWeight="Semibold" Margin="0,0,0,6"/>
+                        <TextBlock x:Name="MatlabToolboxList" Text="" TextWrapping="Wrap" FontSize="12"/>
+                        <TextBlock x:Name="MatlabToolboxHint" Text="" TextWrapping="Wrap" FontSize="11"
+                                   Foreground="#FF606060" Margin="0,8,0,0" Visibility="Collapsed"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <!-- Page 3: SNAP -->
@@ -1242,21 +1285,71 @@ function Initialize-MatlabPage {
         (Get-Element 'MatlabPathBox').Text = $found
         (Get-Element 'MatlabDownloadHint').Visibility = 'Collapsed'
         (Get-Element 'MatlabHint').Text = "Path rilevato automaticamente. Puoi modificarlo se vuoi puntare a una versione diversa."
+        Update-MatlabToolboxStatus -MatlabExe $found
     } else {
         (Get-Element 'MatlabStatus').Text = "[X] MATLAB non trovato sul sistema."
         (Get-Element 'MatlabStatus').Foreground = '#FFA04000'
         (Get-Element 'MatlabPathBox').Text = ''
         (Get-Element 'MatlabDownloadHint').Visibility = 'Visible'
         (Get-Element 'MatlabHint').Text = "Inserisci il path completo a matlab.exe (es. C:\Program Files\MATLAB\R2025a\bin\matlab.exe)."
+        (Get-Element 'MatlabToolboxStatus').Visibility = 'Collapsed'
     }
     Update-MatlabValidation
+}
+
+# Aggiorna il pannello "Toolbox MATLAB" della Page 2 con detection via
+# filesystem (<MATLABROOT>\toolbox\<name>\). Non-bloccante: mostra solo
+# lo stato, l'utente prosegue comunque.
+function Update-MatlabToolboxStatus {
+    param([string]$MatlabExe)
+    if (-not $MatlabExe -or -not (Test-Path $MatlabExe)) {
+        (Get-Element 'MatlabToolboxStatus').Visibility = 'Collapsed'
+        return
+    }
+    try {
+        $toolboxes = Find-MatlabToolboxes -MatlabExe $MatlabExe
+    } catch {
+        (Get-Element 'MatlabToolboxStatus').Visibility = 'Collapsed'
+        return
+    }
+
+    # Costruisco la lista visibile + flag se qualcosa di richiesto manca
+    $lines = @()
+    $missingRequired = @()
+    foreach ($name in $toolboxes.Keys) {
+        $installed = $toolboxes[$name]
+        $isRequired = $Script:RequiredToolboxes -contains $name
+        $marker = if ($installed) { '[OK]' } else { if ($isRequired) { '[X]' } else { '[ ]' } }
+        $tag = if ($isRequired) { ' (richiesta)' } else { ' (opzionale)' }
+        $lines += "$marker $name$tag"
+        if (-not $installed -and $isRequired) { $missingRequired += $name }
+    }
+
+    (Get-Element 'MatlabToolboxList').Text = ($lines -join "`n")
+
+    if ($missingRequired.Count -eq 0) {
+        (Get-Element 'MatlabToolboxHeader').Text = "Toolbox MATLAB - tutte le richieste presenti"
+        (Get-Element 'MatlabToolboxHeader').Foreground = '#FF008000'
+        (Get-Element 'MatlabToolboxHint').Visibility = 'Collapsed'
+    } else {
+        (Get-Element 'MatlabToolboxHeader').Text = "Toolbox MATLAB - $($missingRequired.Count) richiesta/e mancanti"
+        (Get-Element 'MatlabToolboxHeader').Foreground = '#FFA04000'
+        (Get-Element 'MatlabToolboxHint').Visibility = 'Visible'
+        (Get-Element 'MatlabToolboxHint').Text = "Per installare le toolbox mancanti: apri MATLAB -> Home -> Add-Ons -> Get Add-Ons -> cerca il nome -> Install. Sei gia' loggato in MATLAB, nessuna credenziale extra richiesta. Puoi proseguire l'installer adesso e fare l'aggiunta toolbox in un secondo momento."
+    }
+    (Get-Element 'MatlabToolboxStatus').Visibility = 'Visible'
 }
 
 function Update-MatlabValidation {
     $path = (Get-Element 'MatlabPathBox').Text
     $valid = ($path -and (Test-Path $path) -and ($path -like '*matlab.exe'))
     (Get-Element 'NextBtn').IsEnabled = $valid
-    if ($valid) { $Script:State.MatlabExe = $path }
+    if ($valid) {
+        $Script:State.MatlabExe = $path
+        Update-MatlabToolboxStatus -MatlabExe $path
+    } else {
+        (Get-Element 'MatlabToolboxStatus').Visibility = 'Collapsed'
+    }
 }
 
 function Initialize-SnapPage {
