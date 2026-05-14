@@ -8,7 +8,7 @@
 #   4. Verifica/installa Python 3.11+ (silent install da python.org se assente).
 #   5. Sceglie cartella destinazione (default: Desktop\PHASE).
 #   6. Clona pyccino/PHASE, pyccino/StaMPS, Tiopio01/TRAIN.
-#   7. Lancia StaMPS\install-windows.ps1 per Triangle/snaphu.
+#   7. Scarica i binari nativi StaMPS precompilati (stamps-win64-binaries.zip).
 #   8. Configura tutto: MATLAB_EXE, %APPDATA%\PHASE\python.txt, savepath MATLAB.
 #
 # Usage (sorgente):
@@ -638,7 +638,11 @@ function Invoke-MatlabSavePath {
         $phaseM = $PhaseRoot.Replace('\','/')
         $matFile = "$phaseM/PHASE_Preprocessing/input_StaMPS.mat"
         $installFolder = "$phaseM/StaMPS"
-        $projectPath = "$phaseM/PHASE_Preprocessing"
+        # NB: project_path in PHASE_StaMPS e' la PHASE root, non la sottocartella
+        # PHASE_Preprocessing. PHASE_StaMPS appende lui stesso "/PHASE_Preprocessing/INSAR_<date>"
+        # (vedi document.xml:682). Scrivere "$phaseM/PHASE_Preprocessing" qui
+        # duplicava il segmento => path inesistente.
+        $projectPath = "$phaseM"
         $mLines += @(
             "    stamps_preparation = 0;"
             "    installation_folder = '$installFolder';"
@@ -937,34 +941,14 @@ DEMRESAMPLING = BICUBIC_INTERPOLATION
     Set-Content -Path $confPath -Value $template -Encoding UTF8
 }
 
-# Esegue install-windows.ps1 di StaMPS (Triangle/snaphu build).
-function Invoke-StampsInstall {
-    param(
-        [Parameter(Mandatory)] [string]$StampsRoot,
-        [Parameter(Mandatory)] [scriptblock]$StatusCallback
-    )
-    $installScript = Join-Path $StampsRoot 'install-windows.ps1'
-    if (-not (Test-Path $installScript)) {
-        & $StatusCallback "install-windows.ps1 not found at $StampsRoot, skipping."
-        return $false
-    }
-    & $StatusCallback 'StaMPS install-windows.ps1 running (Triangle/snaphu build, may take 5-10 minutes)...'
-    $logFile = Join-Path $env:TEMP 'phase-stamps-install.log'
-    $proc = Start-Process -FilePath 'powershell.exe' `
-        -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $installScript `
-        -WorkingDirectory $StampsRoot `
-        -Wait -PassThru -NoNewWindow `
-        -RedirectStandardOutput $logFile
-    return ($proc.ExitCode -eq 0)
-}
-
 # Scarica i 7 .exe di StaMPS dalla release "windows-port-bins-v1" di
 # Tiopio01/StaMPS (asset stamps-win64-binaries.zip, ~4 MB compressed).
 # Necessari per il workflow PSI (mt_prep_snap, ps_load_initial_gamma).
 # Senza, StaMPS non puo' processare nulla (mt_prep fallisce al primo step).
 #
-# install-windows.ps1 upstream NON li scarica correttamente perche' cerca
-# un asset diverso (stamps-windows-x64-msvc.zip) che non esiste su questo fork.
+# Questo e' il comportamento unico e di default: non tentiamo piu' di
+# compilare Triangle/snaphu da sorgente con install-windows.ps1 (richiedeva
+# MSVC/CMake e in pratica falliva sempre, attivando comunque questo fallback).
 function Invoke-StampsBinariesDownload {
     param(
         [Parameter(Mandatory)] [string]$StampsRoot,
@@ -1887,8 +1871,7 @@ $Script:PipelineTasks = @(
     @{ Key = 'clone-phase'; Label = 'Clone PHASE repository' }
     @{ Key = 'clone-stamps'; Label = 'Clone StaMPS repository' }
     @{ Key = 'clone-train'; Label = 'Clone TRAIN repository' }
-    @{ Key = 'stamps-build'; Label = 'Build StaMPS auxiliary tools' }
-    @{ Key = 'stamps-bin';  Label = 'Download native StaMPS binaries' }
+    @{ Key = 'stamps-bin';  Label = 'Download native StaMPS binaries (precompiled)' }
     @{ Key = 'gmt';         Label = 'Install GMT (portable)' }
     @{ Key = 'env';         Label = 'Configure environment variables' }
     @{ Key = 'matlab';      Label = 'MATLAB savepath + precompile .mat files' }
@@ -2366,20 +2349,9 @@ function Invoke-FullSetup {
     Update-Task -Key 'clone-train' -Status 'done'
     Add-SetupLog "[OK] TRAIN cloned at $trainDir"
 
-    # Task 5: StaMPS install (Triangle/snaphu)
-    Set-SetupProgress 55 'building stamps tools'
-    Update-Task -Key 'stamps-build' -Status 'running' -Detail 'running install-windows.ps1 (may take 5-10 min)...'
-    $stampsOk = Invoke-StampsInstall -StampsRoot $stampsDir -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'stamps-build' -Detail $m }
-    if ($stampsOk) {
-        Update-Task -Key 'stamps-build' -Status 'done'
-        Add-SetupLog "[OK] StaMPS install-windows.ps1 completed"
-    } else {
-        Update-Task -Key 'stamps-build' -Status 'skip'
-        Add-SetupLog "[!] StaMPS install-windows.ps1 failed or unavailable (Triangle/snaphu from source)."
-    }
-
-    # Task 6: StaMPS native binaries
-    Set-SetupProgress 65 'downloading native binaries'
+    # Task 5: StaMPS native binaries (sempre da release precompilata - non
+    # tentiamo piu' la build da sorgente con install-windows.ps1)
+    Set-SetupProgress 60 'downloading native binaries'
     Update-Task -Key 'stamps-bin' -Status 'running' -Detail 'fetching stamps-win64-binaries.zip (~4 MB)...'
     $binOk = Invoke-StampsBinariesDownload -StampsRoot $stampsDir -StatusCallback { param($m) Add-SetupLog $m; Set-TaskDetail -Key 'stamps-bin' -Detail $m }
     if ($binOk) {
@@ -2390,7 +2362,7 @@ function Invoke-FullSetup {
         Add-SetupLog "[!] StaMPS binaries download failed - mt_prep_snap will not work."
     }
 
-    # Task 7: GMT
+    # Task 6: GMT
     Set-SetupProgress 75 'installing gmt'
     Update-Task -Key 'gmt' -Status 'running' -Detail 'checking GMT installation...'
     try {
@@ -2404,7 +2376,7 @@ function Invoke-FullSetup {
         Add-SetupLog "[!] GMT install failed: $($_.Exception.Message). Only required for tropo_method=a_gacos."
     }
 
-    # Task 8: env configuration
+    # Task 7: env configuration
     Set-SetupProgress 82 'configuring environment'
     Update-Task -Key 'env' -Status 'running' -Detail 'writing env vars and config files...'
     Set-MatlabEnvVar -MatlabExe $Script:State.MatlabExe
@@ -2415,7 +2387,7 @@ function Invoke-FullSetup {
     Add-SetupLog "[OK] project.conf.template written at $phaseDir"
     Update-Task -Key 'env' -Status 'done'
 
-    # Task 9: MATLAB savepath + .mat files
+    # Task 8: MATLAB savepath + .mat files
     Set-SetupProgress 90 'matlab savepath + .mat files'
     Update-Task -Key 'matlab' -Status 'running' -Detail 'launching matlab -batch (30-60s startup)...'
     $savepathResult = Invoke-MatlabSavePath -MatlabExe $Script:State.MatlabExe `
@@ -2444,7 +2416,7 @@ function Invoke-FullSetup {
         }
     }
 
-    # Task 10: patch .mlapp files
+    # Task 9: patch .mlapp files
     Set-SetupProgress 95 'patching mlapp files'
     Update-Task -Key 'patch' -Status 'running' -Detail 'injecting startupFcn auto-load patches...'
     Get-Process matlab -ErrorAction SilentlyContinue | ForEach-Object {
