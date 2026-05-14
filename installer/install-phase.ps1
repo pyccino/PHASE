@@ -955,19 +955,36 @@ function Invoke-StampsBinariesDownload {
         [Parameter(Mandatory)] [scriptblock]$StatusCallback
     )
     $binDir = Join-Path $StampsRoot 'bin'
+    $triangleBinDir = Join-Path $StampsRoot 'external\triangle\bin'
     if (-not (Test-Path $binDir)) {
         New-Item -ItemType Directory -Path $binDir -Force | Out-Null
     }
+    if (-not (Test-Path $triangleBinDir)) {
+        New-Item -ItemType Directory -Path $triangleBinDir -Force | Out-Null
+    }
 
-    # Lista dei .exe richiesti per verificare se sono gia' presenti
-    $required = @('calamp.exe', 'cpxsum.exe', 'pscphase.exe', 'pscdem.exe',
-                  'psclonlat.exe', 'selpsc_patch.exe', 'selsbc_patch.exe')
-    $missing = $required | Where-Object { -not (Test-Path (Join-Path $binDir $_)) }
+    # Mappa dei .exe richiesti al loro dest path. Tutti i .exe vivono al
+    # root della zip; il routing per-nome decide se vanno in StaMPS/bin/
+    # (tools StaMPS) o in StaMPS/external/triangle/bin/ (Triangle e' una
+    # dipendenza esterna referenziata cosi' da mt_prep_snap.bat e
+    # StaMPS_CONFIG.ps1).
+    $exeDest = @{
+        'calamp.exe'       = $binDir
+        'cpxsum.exe'       = $binDir
+        'pscphase.exe'     = $binDir
+        'pscdem.exe'       = $binDir
+        'psclonlat.exe'    = $binDir
+        'selpsc_patch.exe' = $binDir
+        'selsbc_patch.exe' = $binDir
+        'triangle.exe'     = $triangleBinDir
+    }
+    $required = $exeDest.Keys
+    $missing = $required | Where-Object { -not (Test-Path (Join-Path $exeDest[$_] $_)) }
     if ($missing.Count -eq 0) {
-        & $StatusCallback "All 7 StaMPS .exe already present at $binDir, skipping download"
+        & $StatusCallback "All $($required.Count) StaMPS .exe already present, skipping download"
         return $true
     }
-    & $StatusCallback "Mancano $($missing.Count)/7 .exe StaMPS, scarico stamps-win64-binaries.zip..."
+    & $StatusCallback "Mancano $($missing.Count)/$($required.Count) .exe StaMPS, scarico stamps-win64-binaries.zip..."
 
     $url = 'https://github.com/Tiopio01/StaMPS/releases/download/windows-port-bins-v1/stamps-win64-binaries.zip'
     $tmpZip = Join-Path $env:TEMP "stamps-win64-binaries_$(Get-Random).zip"
@@ -989,13 +1006,14 @@ function Invoke-StampsBinariesDownload {
         $out.Close(); $in.Close(); $resp.Close()
         & $StatusCallback "Download complete ($([math]::Round($totalRead/1MB,1)) MB)"
 
-        # Estrai i 7 .exe in $binDir
+        # Estrai i .exe nella loro dest dir (StaMPS/bin/ o
+        # StaMPS/external/triangle/bin/ a seconda del nome).
         Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
         $zip = [System.IO.Compression.ZipFile]::OpenRead($tmpZip)
         try {
             foreach ($entry in $zip.Entries) {
-                if ($entry.Name -in $required) {
-                    $dest = Join-Path $binDir $entry.Name
+                if ($exeDest.ContainsKey($entry.Name)) {
+                    $dest = Join-Path $exeDest[$entry.Name] $entry.Name
                     # Sovrascrive (i .exe possono evolvere tra release)
                     if (Test-Path $dest) { Remove-Item -LiteralPath $dest -Force }
                     [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $dest)
@@ -1006,9 +1024,9 @@ function Invoke-StampsBinariesDownload {
         }
 
         # Verifica finale
-        $stillMissing = $required | Where-Object { -not (Test-Path (Join-Path $binDir $_)) }
+        $stillMissing = $required | Where-Object { -not (Test-Path (Join-Path $exeDest[$_] $_)) }
         if ($stillMissing.Count -eq 0) {
-            & $StatusCallback "7/7 .exe StaMPS estratti in $binDir"
+            & $StatusCallback "$($required.Count)/$($required.Count) .exe StaMPS estratti (bin/ + external/triangle/bin/)"
             return $true
         } else {
             & $StatusCallback "ERRORE: dopo l'estrazione mancano ancora: $($stillMissing -join ', ')"
