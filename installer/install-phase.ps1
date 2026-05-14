@@ -691,7 +691,11 @@ function Invoke-MatlabSavePath {
             "    unwrap_patch_phase = 'n';"
             "    unwrap_la_error_flag = 'y';"
             "    unwrap_hold_good_values = 'y';"
-            "    subtr_tropo = 'y';"
+            # Default a 'n': l'utente puo' attivare la correzione troposferica
+            # in GUI dopo aver installato TRAIN + i dati meteo (NCEP / ERA5 / GACOS).
+            # Con 'y' di default, step 7 (ps_calc_scla) finisce in keyboard
+            # mode su un'installazione fresca senza TRAIN ancora configurato.
+            "    subtr_tropo = 'n';"
             "    tropo_method = 'a_linear';"
             "    select_reest_gamma_flag = 'y';"
             "    drop_ifg_index = '[]';"
