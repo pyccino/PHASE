@@ -945,10 +945,17 @@ DEMRESAMPLING = BICUBIC_INTERPOLATION
     Set-Content -Path $confPath -Value $template -Encoding UTF8
 }
 
-# Scarica i 7 .exe di StaMPS dalla release "windows-port-bins-v1" di
-# Tiopio01/StaMPS (asset stamps-win64-binaries.zip, ~4 MB compressed).
-# Necessari per il workflow PSI (mt_prep_snap, ps_load_initial_gamma).
-# Senza, StaMPS non puo' processare nulla (mt_prep fallisce al primo step).
+# Scarica i 9 .exe di StaMPS dalla release "windows-port-bins-v1" di
+# Tiopio01/StaMPS (asset stamps-win64-binaries.zip, ~4 MB compressed):
+#   - 7 core tools (calamp, cpxsum, pscphase, pscdem, psclonlat, selpsc_patch,
+#     selsbc_patch) → StaMPS/bin/
+#   - triangle.exe → StaMPS/external/triangle/bin/
+#   - snaphu.exe   → StaMPS/external/snaphu/bin/
+# Necessari per il workflow PSI (mt_prep_snap, ps_load_initial_gamma) e per
+# l'unwrap statistical-cost (ps_unwrap → uw_3d → uw_stat_costs invoca snaphu).
+# Senza, StaMPS non puo' processare nulla (mt_prep fallisce al primo step,
+# l'unwrap senza snaphu cadrebbe sul vecchio uw_nosnaphu che entra in loop
+# infinito su AOI sparse).
 #
 # Questo e' il comportamento unico e di default: non tentiamo piu' di
 # compilare Triangle/snaphu da sorgente con install-windows.ps1 (richiedeva
@@ -960,11 +967,15 @@ function Invoke-StampsBinariesDownload {
     )
     $binDir = Join-Path $StampsRoot 'bin'
     $triangleBinDir = Join-Path $StampsRoot 'external\triangle\bin'
+    $snaphuBinDir = Join-Path $StampsRoot 'external\snaphu\bin'
     if (-not (Test-Path $binDir)) {
         New-Item -ItemType Directory -Path $binDir -Force | Out-Null
     }
     if (-not (Test-Path $triangleBinDir)) {
         New-Item -ItemType Directory -Path $triangleBinDir -Force | Out-Null
+    }
+    if (-not (Test-Path $snaphuBinDir)) {
+        New-Item -ItemType Directory -Path $snaphuBinDir -Force | Out-Null
     }
 
     # Mappa dei .exe richiesti al loro dest path. Tutti i .exe vivono al
@@ -981,6 +992,7 @@ function Invoke-StampsBinariesDownload {
         'selpsc_patch.exe' = $binDir
         'selsbc_patch.exe' = $binDir
         'triangle.exe'     = $triangleBinDir
+        'snaphu.exe'       = $snaphuBinDir
     }
     $required = $exeDest.Keys
     $missing = $required | Where-Object { -not (Test-Path (Join-Path $exeDest[$_] $_)) }
@@ -1030,7 +1042,7 @@ function Invoke-StampsBinariesDownload {
         # Verifica finale
         $stillMissing = $required | Where-Object { -not (Test-Path (Join-Path $exeDest[$_] $_)) }
         if ($stillMissing.Count -eq 0) {
-            & $StatusCallback "$($required.Count)/$($required.Count) .exe StaMPS estratti (bin/ + external/triangle/bin/)"
+            & $StatusCallback "$($required.Count)/$($required.Count) .exe StaMPS estratti (bin/ + external/triangle/bin/ + external/snaphu/bin/)"
             return $true
         } else {
             & $StatusCallback "ERRORE: dopo l'estrazione mancano ancora: $($stillMissing -join ', ')"
