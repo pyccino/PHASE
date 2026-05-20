@@ -76,3 +76,4 @@ docs/
 Roberto*/
 /_*/
 email_*.txt
+tests/test_roberto_v4_fix.py
