@@ -2419,18 +2419,15 @@ function Invoke-FullSetup {
         New-Item -ItemType Directory -Path $appDir -Force | Out-Null
         Add-SetupLog "[OK] Created $appDir"
     }
-    # Everything (repos + binaries + config) goes under PHASE\engine\ so the app
-    # folder stays clean and only shows the .lnk shortcuts + README. All
-    # downstream paths derive from $phaseDir, so savepath / input_StaMPS.mat /
-    # project.conf follow the new location automatically.
+    # Everything (repos + binaries + config) lives under PHASE\engine\ so the app
+    # folder stays clean and only shows the .lnk shortcuts + README. The PHASE
+    # repo is cloned directly into engine\ (no extra nesting), with StaMPS and
+    # TRAIN as engine\StaMPS / engine\TRAIN. All downstream paths derive from
+    # $phaseDir, so savepath / input_StaMPS.mat / project.conf follow along.
     $engineDir = Join-Path $appDir 'engine'
-    if (-not (Test-Path $engineDir)) {
-        New-Item -ItemType Directory -Path $engineDir -Force | Out-Null
-        Add-SetupLog "[OK] Created $engineDir"
-    }
-    $phaseDir = Join-Path $engineDir 'PHASE'
-    $stampsDir = Join-Path $phaseDir 'StaMPS'
-    $trainDir = Join-Path $phaseDir 'TRAIN'
+    $phaseDir = $engineDir                       # PHASE repo == engine\
+    $stampsDir = Join-Path $phaseDir 'StaMPS'    # engine\StaMPS
+    $trainDir = Join-Path $phaseDir 'TRAIN'      # engine\TRAIN
 
     # Task 2: clone PHASE
     Set-SetupProgress 15 'cloning phase'
