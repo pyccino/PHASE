@@ -21,7 +21,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$DefaultInstallDir = "$env:USERPROFILE\Desktop\PHASE",
+    [string]$DefaultInstallDir = "$env:USERPROFILE\Desktop",
     [switch]$DryRun
 )
 
@@ -1889,7 +1889,7 @@ function Update-DestValidation {
         $parent = Split-Path -Parent $path
         if (-not $parent -or (Test-Path $parent)) {
             $valid = $true
-            $hint = if (Test-Path $path) { "The folder already exists: if it already contains PHASE the installer will reuse it, otherwise it will write into it." } else { "The folder will creata." }
+            $hint = if (Test-Path $path) { "A 'PHASE' folder will be created inside this folder (reused if it already exists)." } else { "This folder will be created, with a 'PHASE' folder inside it." }
         } else {
             $hint = "The parent folder $parent does not exist."
         }
@@ -1928,7 +1928,7 @@ function Initialize-SetupPage {
 }
 
 function Initialize-FinishPage {
-    (Get-Element 'FinishPath').Text = $Script:State.InstallDir
+    (Get-Element 'FinishPath').Text = (Join-Path $Script:State.InstallDir 'PHASE')
     (Get-Element 'BackBtn').IsEnabled = $false
     (Get-Element 'CancelBtn').IsEnabled = $true
     (Get-Element 'CancelBtn').Content = 'Close'
@@ -2314,7 +2314,7 @@ function Set-SetupProgress {
 })
 
 (Get-Element 'OpenFolderBtn').Add_Click({
-    Start-Process explorer.exe -ArgumentList $Script:State.InstallDir
+    Start-Process explorer.exe -ArgumentList (Join-Path $Script:State.InstallDir 'PHASE')
 })
 
 (Get-Element 'OpenLogBtn').Add_Click({
@@ -2389,7 +2389,7 @@ function Invoke-FullSetup {
     Add-SetupLog "MATLAB:  $($Script:State.MatlabExe)"
     Add-SetupLog "SNAP:    $($Script:State.SnapGpt)"
     Add-SetupLog "Python:  $($Script:State.PythonExe) ($($Script:State.PythonVersion))"
-    Add-SetupLog "Dest:    $($Script:State.InstallDir)"
+    Add-SetupLog "Dest:    $(Join-Path $Script:State.InstallDir 'PHASE')"
 
     # Task 1: git
     Set-SetupProgress 5 'detecting git'
@@ -2411,15 +2411,19 @@ function Invoke-FullSetup {
     Update-Task -Key 'git' -Status 'done'
     Add-SetupLog "[OK] git: $git"
 
-    if (-not (Test-Path $Script:State.InstallDir)) {
-        New-Item -ItemType Directory -Path $Script:State.InstallDir -Force | Out-Null
-        Add-SetupLog "[OK] Created $($Script:State.InstallDir)"
+    # Always install into a dedicated "PHASE" folder inside the chosen
+    # destination, so the picked folder isn't filled directly. This is the
+    # user-facing app folder: it holds the .lnk shortcuts + README at the top.
+    $appDir = Join-Path $Script:State.InstallDir 'PHASE'
+    if (-not (Test-Path $appDir)) {
+        New-Item -ItemType Directory -Path $appDir -Force | Out-Null
+        Add-SetupLog "[OK] Created $appDir"
     }
-    # Everything (repos + binaries + config) goes under engine\ so the install
-    # root stays clean and only shows the .lnk shortcuts + README. All downstream
-    # paths derive from $phaseDir, so savepath / input_StaMPS.mat / project.conf
-    # follow the new location automatically.
-    $engineDir = Join-Path $Script:State.InstallDir 'engine'
+    # Everything (repos + binaries + config) goes under PHASE\engine\ so the app
+    # folder stays clean and only shows the .lnk shortcuts + README. All
+    # downstream paths derive from $phaseDir, so savepath / input_StaMPS.mat /
+    # project.conf follow the new location automatically.
+    $engineDir = Join-Path $appDir 'engine'
     if (-not (Test-Path $engineDir)) {
         New-Item -ItemType Directory -Path $engineDir -Force | Out-Null
         Add-SetupLog "[OK] Created $engineDir"
@@ -2648,7 +2652,7 @@ function Invoke-FullSetup {
     # all'uso quotidiano). Non bloccante: se fallisce, i .mlapp restano comunque
     # apribili da engine\PHASE\.
     try {
-        New-PhaseLauncherShortcuts -InstallDir $Script:State.InstallDir -PhaseDir $phaseDir `
+        New-PhaseLauncherShortcuts -InstallDir $appDir -PhaseDir $phaseDir `
             -StatusCallback { param($m) Add-SetupLog $m }
     } catch {
         Add-SetupLog "[!] Could not create root shortcuts/README: $($_.Exception.Message)"
@@ -2657,7 +2661,7 @@ function Invoke-FullSetup {
     Set-SetupProgress 100 'all done'
     Add-SetupLog ""
     Add-SetupLog "=== Installation complete ==="
-    Add-SetupLog "Launch the app from the shortcuts in $($Script:State.InstallDir):"
+    Add-SetupLog "Launch the app from the shortcuts in $($appDir):"
     Add-SetupLog "  PHASE Preprocessing.lnk"
     Add-SetupLog "  PHASE StaMPS.lnk"
     Add-SetupLog "  PHASE model.lnk"
