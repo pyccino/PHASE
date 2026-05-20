@@ -7,9 +7,11 @@
 #   3. Verifica SNAP   (auto-detect + override + lancio installer bundled).
 #   4. Verifica/installa Python 3.11+ (silent install da python.org se assente).
 #   5. Sceglie cartella destinazione (default: Desktop\PHASE).
-#   6. Clona pyccino/PHASE, pyccino/StaMPS, Tiopio01/TRAIN.
+#   6. Clona PHASE, StaMPS, TRAIN sotto <dest>\engine\ (motore nascosto).
 #   7. Scarica i binari nativi StaMPS precompilati (stamps-win64-binaries.zip).
 #   8. Configura tutto: MATLAB_EXE, %APPDATA%\PHASE\python.txt, savepath MATLAB.
+#   9. Crea nella root <dest> i collegamenti .lnk ai 3 .mlapp + un README,
+#      così l'utente avvia l'app senza entrare in engine\.
 #
 # Usage (sorgente):
 #   powershell -ExecutionPolicy Bypass -File install-phase.ps1
@@ -1926,7 +1928,7 @@ function Initialize-SetupPage {
 }
 
 function Initialize-FinishPage {
-    (Get-Element 'FinishPath').Text = (Join-Path $Script:State.InstallDir 'PHASE')
+    (Get-Element 'FinishPath').Text = $Script:State.InstallDir
     (Get-Element 'BackBtn').IsEnabled = $false
     (Get-Element 'CancelBtn').IsEnabled = $true
     (Get-Element 'CancelBtn').Content = 'Close'
@@ -2320,6 +2322,71 @@ function Set-SetupProgress {
 })
 
 # -----------------------------------------------------------------------------
+# Crea nella root di InstallDir i collegamenti (.lnk) ai tre .mlapp + un README,
+# così l'utente avvia l'app dalla cartella principale senza entrare in engine\
+# (richiesta Roberto round 3, Punto 3 - "che l'utente veda il meno possibile").
+# I collegamenti puntano ai .mlapp dentro engine\PHASE\ e impostano la
+# WorkingDirectory sulla cartella del .mlapp (stesso cwd di un doppio click
+# diretto, così l'auto-load relativo dei .mat continua a funzionare).
+# -----------------------------------------------------------------------------
+function New-PhaseLauncherShortcuts {
+    param(
+        [Parameter(Mandatory)] [string]$InstallDir,
+        [Parameter(Mandatory)] [string]$PhaseDir,
+        [scriptblock]$StatusCallback = { param($m) }
+    )
+
+    $apps = @(
+        @{ Name = 'PHASE Preprocessing'; Target = (Join-Path $PhaseDir 'PHASE_Preprocessing.mlapp') }
+        @{ Name = 'PHASE StaMPS';        Target = (Join-Path $PhaseDir 'PHASE_Preprocessing\PHASE_StaMPS.mlapp') }
+        @{ Name = 'PHASE model';         Target = (Join-Path $PhaseDir 'PHASE_model.mlapp') }
+    )
+
+    $wsh = New-Object -ComObject WScript.Shell
+    try {
+        foreach ($a in $apps) {
+            if (-not (Test-Path $a.Target)) {
+                & $StatusCallback "[!] Shortcut skipped, target missing: $($a.Target)"
+                continue
+            }
+            $lnkPath = Join-Path $InstallDir ($a.Name + '.lnk')
+            $sc = $wsh.CreateShortcut($lnkPath)
+            $sc.TargetPath = $a.Target
+            $sc.WorkingDirectory = (Split-Path -Parent $a.Target)
+            $sc.Description = "Open $($a.Name) in MATLAB App Designer"
+            $sc.Save()
+            & $StatusCallback "[OK] Shortcut: $lnkPath"
+        }
+    } finally {
+        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wsh) | Out-Null
+    }
+
+    $readme = Join-Path $InstallDir 'LEGGIMI - README.txt'
+    $readmeText = @"
+PHASE - InSAR PSI suite
+=======================
+
+Per AVVIARE l'applicazione fai doppio click su uno di questi collegamenti:
+
+  - "PHASE Preprocessing.lnk"  ->  preparazione dati SNAP (modulo 1)
+  - "PHASE StaMPS.lnk"         ->  processing StaMPS + export (modulo 2)
+  - "PHASE model.lnk"          ->  modellazione (modulo 3)
+
+NON modificare ne' spostare la cartella "engine": contiene il codice, i
+binari e la configurazione di PHASE. Spostarla o cancellarne il contenuto
+impedisce l'avvio dell'applicazione.
+
+------------------------------------------------------------------------
+
+To START the application, double-click one of the shortcuts above.
+Do NOT move, rename or delete the "engine" folder: it holds PHASE's
+code, native binaries and configuration.
+"@
+    Set-Content -Path $readme -Value $readmeText -Encoding UTF8
+    & $StatusCallback "[OK] README: $readme"
+}
+
+# -----------------------------------------------------------------------------
 # Main setup orchestration (runs in Page 6 when StartSetupBtn is clicked)
 # -----------------------------------------------------------------------------
 
@@ -2355,7 +2422,16 @@ function Invoke-FullSetup {
         New-Item -ItemType Directory -Path $Script:State.InstallDir -Force | Out-Null
         Add-SetupLog "[OK] Created $($Script:State.InstallDir)"
     }
-    $phaseDir = Join-Path $Script:State.InstallDir 'PHASE'
+    # Tutto il "motore" (repo + binari + config) finisce sotto engine\, così la
+    # cartella principale resta pulita e mostra solo i collegamenti .lnk + README
+    # (richiesta Roberto round 3, Punto 3). I path a valle derivano da $phaseDir,
+    # quindi savepath / input_StaMPS.mat / project.conf seguono automaticamente.
+    $engineDir = Join-Path $Script:State.InstallDir 'engine'
+    if (-not (Test-Path $engineDir)) {
+        New-Item -ItemType Directory -Path $engineDir -Force | Out-Null
+        Add-SetupLog "[OK] Created $engineDir"
+    }
+    $phaseDir = Join-Path $engineDir 'PHASE'
     $stampsDir = Join-Path $phaseDir 'StaMPS'
     $trainDir = Join-Path $phaseDir 'TRAIN'
 
@@ -2574,13 +2650,25 @@ function Invoke-FullSetup {
         -StatusCallback { param($m) Add-SetupLog $m })
 
     Update-Task -Key 'patch' -Status 'done'
+
+    # Collegamenti + README nella cartella principale (engine\ resta nascosto
+    # all'uso quotidiano). Non bloccante: se fallisce, i .mlapp restano comunque
+    # apribili da engine\PHASE\.
+    try {
+        New-PhaseLauncherShortcuts -InstallDir $Script:State.InstallDir -PhaseDir $phaseDir `
+            -StatusCallback { param($m) Add-SetupLog $m }
+    } catch {
+        Add-SetupLog "[!] Could not create root shortcuts/README: $($_.Exception.Message)"
+    }
+
     Set-SetupProgress 100 'all done'
     Add-SetupLog ""
     Add-SetupLog "=== Installation complete ==="
-    Add-SetupLog "Apri uno di questi file in MATLAB:"
-    Add-SetupLog "  $phaseDir\PHASE_Preprocessing.mlapp"
-    Add-SetupLog "  $phaseDir\PHASE_Preprocessing\PHASE_StaMPS.mlapp"
-    Add-SetupLog "  $phaseDir\PHASE_model.mlapp"
+    Add-SetupLog "Apri l'app dai collegamenti nella cartella $($Script:State.InstallDir):"
+    Add-SetupLog "  PHASE Preprocessing.lnk"
+    Add-SetupLog "  PHASE StaMPS.lnk"
+    Add-SetupLog "  PHASE model.lnk"
+    Add-SetupLog "(i file reali sono in $phaseDir - non serve aprirli a mano)"
 }
 
 # -----------------------------------------------------------------------------
