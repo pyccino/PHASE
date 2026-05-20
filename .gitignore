@@ -69,3 +69,10 @@ installers/
 transfer_*.zip
 Phase.zip
 *.7z
+
+# Internal/working material - keep local, never commit to the repo
+docs/
+.claude/
+Roberto*/
+/_*/
+email_*.txt
