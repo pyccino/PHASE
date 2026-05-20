@@ -2322,12 +2322,11 @@ function Set-SetupProgress {
 })
 
 # -----------------------------------------------------------------------------
-# Crea nella root di InstallDir i collegamenti (.lnk) ai tre .mlapp + un README,
-# così l'utente avvia l'app dalla cartella principale senza entrare in engine\
-# (richiesta Roberto round 3, Punto 3 - "che l'utente veda il meno possibile").
-# I collegamenti puntano ai .mlapp dentro engine\PHASE\ e impostano la
-# WorkingDirectory sulla cartella del .mlapp (stesso cwd di un doppio click
-# diretto, così l'auto-load relativo dei .mat continua a funzionare).
+# Create in the install root the .lnk shortcuts to the three .mlapp apps + a
+# README, so the user launches the app from the main folder without browsing
+# into engine\. The shortcuts point at the .mlapp files inside engine\PHASE\
+# and set WorkingDirectory to the .mlapp folder (same cwd as a direct double
+# click, so the relative .mat auto-load keeps working).
 # -----------------------------------------------------------------------------
 function New-PhaseLauncherShortcuts {
     param(
@@ -2361,26 +2360,20 @@ function New-PhaseLauncherShortcuts {
         [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wsh) | Out-Null
     }
 
-    $readme = Join-Path $InstallDir 'LEGGIMI - README.txt'
+    $readme = Join-Path $InstallDir 'README.txt'
     $readmeText = @"
 PHASE - InSAR PSI suite
 =======================
 
-Per AVVIARE l'applicazione fai doppio click su uno di questi collegamenti:
+To START the application, double-click one of these shortcuts:
 
-  - "PHASE Preprocessing.lnk"  ->  preparazione dati SNAP (modulo 1)
-  - "PHASE StaMPS.lnk"         ->  processing StaMPS + export (modulo 2)
-  - "PHASE model.lnk"          ->  modellazione (modulo 3)
+  - "PHASE Preprocessing.lnk"  ->  SNAP data preparation (module 1)
+  - "PHASE StaMPS.lnk"         ->  StaMPS processing + export (module 2)
+  - "PHASE model.lnk"          ->  modelling (module 3)
 
-NON modificare ne' spostare la cartella "engine": contiene il codice, i
-binari e la configurazione di PHASE. Spostarla o cancellarne il contenuto
-impedisce l'avvio dell'applicazione.
-
-------------------------------------------------------------------------
-
-To START the application, double-click one of the shortcuts above.
 Do NOT move, rename or delete the "engine" folder: it holds PHASE's
-code, native binaries and configuration.
+code, native binaries and configuration. Moving it or deleting its
+contents will prevent the application from starting.
 "@
     Set-Content -Path $readme -Value $readmeText -Encoding UTF8
     & $StatusCallback "[OK] README: $readme"
@@ -2422,10 +2415,10 @@ function Invoke-FullSetup {
         New-Item -ItemType Directory -Path $Script:State.InstallDir -Force | Out-Null
         Add-SetupLog "[OK] Created $($Script:State.InstallDir)"
     }
-    # Tutto il "motore" (repo + binari + config) finisce sotto engine\, così la
-    # cartella principale resta pulita e mostra solo i collegamenti .lnk + README
-    # (richiesta Roberto round 3, Punto 3). I path a valle derivano da $phaseDir,
-    # quindi savepath / input_StaMPS.mat / project.conf seguono automaticamente.
+    # Everything (repos + binaries + config) goes under engine\ so the install
+    # root stays clean and only shows the .lnk shortcuts + README. All downstream
+    # paths derive from $phaseDir, so savepath / input_StaMPS.mat / project.conf
+    # follow the new location automatically.
     $engineDir = Join-Path $Script:State.InstallDir 'engine'
     if (-not (Test-Path $engineDir)) {
         New-Item -ItemType Directory -Path $engineDir -Force | Out-Null
@@ -2664,11 +2657,11 @@ function Invoke-FullSetup {
     Set-SetupProgress 100 'all done'
     Add-SetupLog ""
     Add-SetupLog "=== Installation complete ==="
-    Add-SetupLog "Apri l'app dai collegamenti nella cartella $($Script:State.InstallDir):"
+    Add-SetupLog "Launch the app from the shortcuts in $($Script:State.InstallDir):"
     Add-SetupLog "  PHASE Preprocessing.lnk"
     Add-SetupLog "  PHASE StaMPS.lnk"
     Add-SetupLog "  PHASE model.lnk"
-    Add-SetupLog "(i file reali sono in $phaseDir - non serve aprirli a mano)"
+    Add-SetupLog "(the actual files live in $phaseDir - no need to open them by hand)"
 }
 
 # -----------------------------------------------------------------------------
