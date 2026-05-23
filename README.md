@@ -74,7 +74,7 @@
 ## Module 1: InSAR PSI Processing
 
 1.	**Automated SAR Images Download:** <br>
-Retrieve Sentinel-1 images via the generated Python script from the Alaska SAR Facility, or manually place your COSMO-SkyMed .h5 files into the slaves directory.
+Retrieve Sentinel-1 images via the generated Python script from the Alaska SAR Facility. For COSMO-SkyMed, use the **Images** tab in the Cosmo-SkyMed panel to import your `.h5` files (they are copied into the `slaves` directory automatically).
 2.	**Interactive AOI & Automated Master Selection:** <br>
 Define your precise Area of Interest (AOI) by drawing a bounding box directly on the GUI's geographic map interface. Let PHASE automatically query the Open-Meteo historical weather API to select the optimal, driest master image for your stack.
 3.	**Master & Slave Pre-Processing:** <br>
@@ -161,9 +161,10 @@ After the TRAIN Windows port, verify your install with these three checks.
    - Output contains `Atmosphere_a_linear_AOI_PS.mat` and `Atmosphere_a_linear_*.csv`.
    - Velocity values differ from a run with TRAIN unchecked.
 
-> **Note on the Windows fork.** `Tiopio01/TRAIN` (default branch `main`) is forked from `dbekaert/TRAIN` at the audited commit `6c93feb` plus two Windows-specific fixes:
+> **Note on the Windows fork.** `Tiopio01/TRAIN` (default branch `main`) is forked from `dbekaert/TRAIN` at the audited commit `6c93feb` plus the following Windows-specific additions:
 > - `get_gmt_version.m`: actionable error on Windows when GMT is not on PATH (the upstream loop manipulates Linux-only library env vars).
 > - `aps_gacos_files.m`: replaces Unix `&` background launch with synchronous `system()` call on Windows (cmd.exe parses `&` differently).
+> - `gacosDownloadDialog.m`: new helper that shows the GACOS request parameters in a copy-paste dialog (called from `PHASE_StaMPS.mlapp`).
 >
 > Unix/Mac behavior is unchanged. Use upstream `dbekaert/TRAIN` directly on Linux/macOS if preferred.
 
@@ -172,8 +173,8 @@ After the TRAIN Windows port, verify your install with these three checks.
 1. Same TRAIN install as above. Additionally install [GMT for Windows](https://www.generic-mapping-tools.org/download/) and ensure `C:\Program Files\GMT\bin` (or your install dir) is on PATH; verify with `gmt --version` in a fresh terminal.
 2. Launch `PHASE_StaMPS.mlapp`. Tick TRAIN. Set `tropo_method='a_gacos'`. Save, Start.
 3. Expected:
-   - MATLAB pauses at `keyboard` after creating `GACOS/` and `GACOS_download_info.txt`.
-   - Download `.tar.gz` files from gacos.net per the printed instructions, place in `GACOS/`, press Continue in MATLAB editor.
+   - A "Download GACOS maps" window opens (the gacos.net site and the `GACOS/` folder open automatically). It shows the request parameters (UTC, bounding box, dates) ready to copy into the form at gacos.net — select **Binary grid** as the file type.
+   - Download the `.tar.gz` files from gacos.net, place them in `GACOS/` (do not extract), then press **Continue** in the window.
    - MATLAB extracts/distributes `.ztd` files.
    - Output contains `Atmosphere_a_gacos_AOI_PS.mat` and `Atmosphere_a_gacos_*.csv`.
 
